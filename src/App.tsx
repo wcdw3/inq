@@ -1,34 +1,26 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import './App.css';
+import { Stack } from '@chakra-ui/react';
+import Node from './Node';
 
-function App() {
-  const [count, setCount] = useState(0);
+const NODES = [
+  { id: '1', text: 'asdjfklsjdkfljsdlkf' },
+  {
+    id: '2',
+    text: 'asdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkf',
+  },
+  { id: '3', text: '1' },
+  { id: '4', text: '3' },
+  {
+    id: '5',
+    text: 'asdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkfasdjfklsjdkfljsdlkf',
+  },
+];
 
+export default function App() {
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          Vite
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <Stack>
+      {NODES.map((n) => (
+        <Node key={n.id} text={n.text} />
+      ))}
+    </Stack>
   );
 }
-
-export default App;
