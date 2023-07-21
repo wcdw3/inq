@@ -28,9 +28,11 @@ import {
   cloneObject,
   flattenTree,
   getProjection,
+  insertNode,
   removeChildrenOf,
   setProperty,
 } from './service';
+import { nanoid } from 'nanoid';
 
 const POINTER_DISTANCE = 5;
 
@@ -68,6 +70,7 @@ export default function Tree({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
+  const [focusedId, setFocusedId] = useState<UniqueIdentifier | null>(null);
 
   const flattenedItems = useMemo(() => {
     const flattenedTree = flattenTree(tree, rootNodeId);
@@ -135,10 +138,34 @@ export default function Tree({
   };
 
   const handleCollapse = (id: UniqueIdentifier) => {
-    setTree((items) => ({
-      ...items,
-      children: setProperty(items.children, id, 'collapsed', (value) => !value),
+    setTree((tree) => ({
+      ...tree,
+      children: setProperty(tree.children, id, 'collapsed', (value) => !value),
     }));
+  };
+
+  const handleAddFromNode = (
+    parentId: UniqueIdentifier,
+    id: UniqueIdentifier,
+    index: number,
+    collapsed?: boolean,
+  ) => {
+    const newNode = {
+      id: nanoid(),
+      children: [],
+      text: '',
+      collapsed: true,
+    };
+
+    setTree((tree) => ({
+      ...tree,
+      children: insertNode(tree.children, newNode, {
+        parentId: collapsed ? parentId : id,
+        index: collapsed ? index + 1 : 0,
+      }),
+    }));
+
+    setFocusedId(newNode.id);
   };
 
   const sensors = useSensors(
@@ -161,17 +188,23 @@ export default function Tree({
         items={flattenedItems.map(({ id }) => id)}
         strategy={verticalListSortingStrategy}
       >
-        {flattenedItems.map(({ id, depth, text, collapsed, children }) => (
-          <Node
-            key={id}
-            id={id}
-            depth={depth}
-            text={text}
-            collapsed={!!collapsed}
-            onCollapse={() => handleCollapse(id)}
-            showCollapseButton={children.length > 0}
-          />
-        ))}
+        {flattenedItems.map(
+          ({ id, depth, text, collapsed, children, index, parentId }) => (
+            <Node
+              key={id}
+              id={id}
+              depth={depth}
+              text={text}
+              collapsed={!!collapsed}
+              onCollapse={() => handleCollapse(id)}
+              onAddFromNode={() =>
+                handleAddFromNode(parentId, id, index, collapsed)
+              }
+              focus={focusedId === id}
+              showCollapseButton={children.length > 0}
+            />
+          ),
+        )}
         {createPortal(
           <DragOverlay dropAnimation={dropAnimationConfig} />,
           document.body,

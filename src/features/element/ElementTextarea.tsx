@@ -4,10 +4,12 @@ import { ChangeEventHandler, useEffect, useRef, useState } from 'react';
 
 interface ElementTextareaProps extends Omit<TextareaProps, 'onChange'> {
   defaultValue: string;
+  focus: boolean;
 }
 
 export default function ElementTextarea({
   defaultValue,
+  focus,
   ...props
 }: ElementTextareaProps) {
   const [value, setValue] = useState<string>(() => defaultValue);
@@ -22,6 +24,12 @@ export default function ElementTextarea({
       autosize(ref.current);
     }
   }, [ref]);
+
+  useEffect(() => {
+    if (focus) {
+      ref.current?.focus();
+    }
+  }, [focus]);
 
   return (
     <Textarea
