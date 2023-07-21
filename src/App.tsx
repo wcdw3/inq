@@ -1,26 +1,11 @@
 import { Stack } from '@chakra-ui/react';
-import Tree from './tree/Tree';
-
-const TREE = {
-  id: 'root',
-  collapsed: true,
-  children: [
-    {
-      id: '1',
-      collapsed: false,
-      children: [
-        { id: '1-1', collapsed: true, children: [] },
-        { id: '1-2', collapsed: true, children: [] },
-      ],
-    },
-    { id: '2', collapsed: true, children: [] },
-  ],
-};
+import Tree from './features/tree/Tree';
+import data from './data';
 
 export default function App() {
   return (
     <Stack spacing={3}>
-      <Tree defaultTree={TREE} rootNodeId={TREE.id} />
+      <Tree defaultTree={data} rootNodeId={data.id} />
     </Stack>
   );
 }

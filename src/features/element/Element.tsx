@@ -14,7 +14,7 @@ export default function Element({
       <Flex alignSelf="flex-start" pt="0.3125rem">
         <ElementIndicator {...indicatorProps} />
       </Flex>
-      <ElementTextarea value={text} />
+      <ElementTextarea defaultValue={text} />
     </HStack>
   );
 }

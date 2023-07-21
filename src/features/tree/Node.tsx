@@ -8,9 +8,11 @@ import Element from '../element/Element';
 export default function Node({
   id,
   depth,
+  text,
 }: {
   id: UniqueIdentifier;
   depth: number;
+  text: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
@@ -23,11 +25,11 @@ export default function Node({
   return (
     <Box pl={`${depth * INDENTION_WIDTH}rem`} style={style} ref={setNodeRef}>
       <Element
+        text={text}
         indicatorProps={{
           ...attributes,
           ...listeners,
         }}
-        text={`${id}`}
       />
     </Box>
   );
