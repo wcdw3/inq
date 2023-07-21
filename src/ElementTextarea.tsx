@@ -2,7 +2,7 @@ import { Textarea, TextareaProps } from '@chakra-ui/react';
 import autosize from 'autosize';
 import { useEffect, useRef } from 'react';
 
-export default function NodeTextarea(props: TextareaProps) {
+export default function ElementTextarea(props: TextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

@@ -1,14 +1,34 @@
-import { Flex, HStack } from '@chakra-ui/react';
-import NodeIndicator from './NodeIndicator';
-import NodeTextarea from './NodeTextarea';
+import { Box } from '@chakra-ui/react';
+import type { UniqueIdentifier } from '@dnd-kit/core';
+import Element from './Element';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { INDENTION_WIDTH } from './const';
 
-export default function Node({ text }: { text: string }) {
+export default function Node({
+  id,
+  depth,
+}: {
+  id: UniqueIdentifier;
+  depth: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
-    <HStack spacing={1.5}>
-      <Flex alignSelf="flex-start" pt="0.3125rem">
-        <NodeIndicator />
-      </Flex>
-      <NodeTextarea value={text} />
-    </HStack>
+    <Box pl={`${depth * INDENTION_WIDTH}rem`} style={style} ref={setNodeRef}>
+      <Element
+        indicatorProps={{
+          ...attributes,
+          ...listeners,
+        }}
+        text={`${id}`}
+      />
+    </Box>
   );
 }
