@@ -141,3 +141,23 @@ export function buildTree(
 export function cloneObject<T extends object>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
+
+export function setProperty<T extends keyof Tree>(
+  items: Tree[],
+  id: UniqueIdentifier,
+  property: T,
+  setter: (value: Tree[T]) => Tree[T],
+) {
+  for (const item of items) {
+    if (item.id === id) {
+      item[property] = setter(item[property]);
+      continue;
+    }
+
+    if (item.children.length) {
+      item.children = setProperty(item.children, id, property, setter);
+    }
+  }
+
+  return [...items];
+}

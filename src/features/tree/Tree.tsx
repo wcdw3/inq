@@ -29,6 +29,7 @@ import {
   flattenTree,
   getProjection,
   removeChildrenOf,
+  setProperty,
 } from './service';
 
 const POINTER_DISTANCE = 5;
@@ -63,13 +64,13 @@ export default function Tree({
   defaultTree: Tree;
   rootNodeId: UniqueIdentifier;
 }) {
-  const [items, setItems] = useState(() => defaultTree);
+  const [tree, setTree] = useState(() => defaultTree);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
 
   const flattenedItems = useMemo(() => {
-    const flattenedTree = flattenTree(items, rootNodeId);
+    const flattenedTree = flattenTree(tree, rootNodeId);
     const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
       (acc, { children, collapsed, id }) =>
         collapsed && children.length ? [...acc, id] : acc,
@@ -80,7 +81,7 @@ export default function Tree({
       flattenedTree,
       activeId ? [activeId, ...collapsedItems] : collapsedItems,
     );
-  }, [items, activeId, rootNodeId]);
+  }, [tree, activeId, rootNodeId]);
 
   const projected =
     activeId && overId
@@ -119,7 +120,7 @@ export default function Tree({
 
     if (projected && over) {
       const { depth, parentId } = projected;
-      const clonedItems = cloneObject(flattenTree(items, rootNodeId));
+      const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
       const overIndex = clonedItems.findIndex(({ id }) => id === over.id);
       const activeIndex = clonedItems.findIndex(({ id }) => id === active.id);
       const activeTreeItem = clonedItems[activeIndex];
@@ -127,10 +128,17 @@ export default function Tree({
       clonedItems[activeIndex] = { ...activeTreeItem, depth, parentId };
 
       const sortedItems = arrayMove(clonedItems, activeIndex, overIndex);
-      const newItems = buildTree(sortedItems, rootNodeId);
+      const newTree = buildTree(sortedItems, rootNodeId);
 
-      setItems(newItems);
+      setTree(newTree);
     }
+  };
+
+  const handleCollapse = (id: UniqueIdentifier) => {
+    setTree((items) => ({
+      ...items,
+      children: setProperty(items.children, id, 'collapsed', (value) => !value),
+    }));
   };
 
   const sensors = useSensors(
@@ -153,8 +161,16 @@ export default function Tree({
         items={flattenedItems.map(({ id }) => id)}
         strategy={verticalListSortingStrategy}
       >
-        {flattenedItems.map(({ id, depth, text }) => (
-          <Node key={id} id={id} depth={depth} text={text} />
+        {flattenedItems.map(({ id, depth, text, collapsed, children }) => (
+          <Node
+            key={id}
+            id={id}
+            depth={depth}
+            text={text}
+            collapsed={!!collapsed}
+            onCollapse={() => handleCollapse(id)}
+            showCollapseButton={children.length > 0}
+          />
         ))}
         {createPortal(
           <DragOverlay dropAnimation={dropAnimationConfig} />,
