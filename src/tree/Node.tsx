@@ -1,9 +1,9 @@
 import { Box } from '@chakra-ui/react';
 import type { UniqueIdentifier } from '@dnd-kit/core';
-import Element from './Element';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { INDENTION_WIDTH } from './const';
+import Element from '../element/Element';
 
 export default function Node({
   id,

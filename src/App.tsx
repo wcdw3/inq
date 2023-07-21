@@ -1,5 +1,5 @@
 import { Stack } from '@chakra-ui/react';
-import Tree from './Tree';
+import Tree from './tree/Tree';
 
 const TREE = {
   id: 'root',
