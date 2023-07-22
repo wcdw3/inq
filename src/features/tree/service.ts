@@ -146,16 +146,16 @@ export function setProperty<T extends keyof Tree>(
   items: Tree[],
   id: UniqueIdentifier,
   property: T,
-  setter: (value: Tree[T]) => Tree[T],
+  newProperty: Tree[T],
 ) {
   for (const item of items) {
     if (item.id === id) {
-      item[property] = setter(item[property]);
+      item[property] = newProperty;
       continue;
     }
 
     if (item.children.length) {
-      item.children = setProperty(item.children, id, property, setter);
+      item.children = setProperty(item.children, id, property, newProperty);
     }
   }
 

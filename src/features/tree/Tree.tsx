@@ -142,10 +142,13 @@ export default function Tree({
     }
   };
 
-  const handleCollapse = (id: UniqueIdentifier) => {
+  const handleCollapse = (
+    id: UniqueIdentifier,
+    newCollapsed: boolean | undefined,
+  ) => {
     setTree((tree) => ({
       ...tree,
-      children: setProperty(tree.children, id, 'collapsed', (value) => !value),
+      children: setProperty(tree.children, id, 'collapsed', newCollapsed),
     }));
   };
 
@@ -202,6 +205,36 @@ export default function Tree({
     }
   };
 
+  const handleIndent = (
+    prevSiblingId: UniqueIdentifier | null,
+    targetId: UniqueIdentifier,
+  ) => {
+    if (prevSiblingId) {
+      const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
+      const targetIndex = clonedItems.findIndex(({ id }) => id === targetId);
+      const targetNode = clonedItems[targetIndex];
+
+      clonedItems[targetIndex] = {
+        ...targetNode,
+        depth: targetNode.depth + 1,
+        parentId: prevSiblingId,
+      };
+
+      const prevSiblingIndex = clonedItems.findIndex(
+        ({ id }) => id === prevSiblingId,
+      );
+      const prevSiblingNode = clonedItems[prevSiblingIndex];
+
+      clonedItems[prevSiblingIndex] = {
+        ...prevSiblingNode,
+        collapsed: false,
+      };
+
+      const newTree = buildTree(clonedItems, rootNodeId);
+      setTree(newTree);
+    }
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -224,9 +257,8 @@ export default function Tree({
       >
         {flattenedItems.map(
           ({ id, depth, text, collapsed, children, index, parentId }, i) => {
-            const prevId = flattenedItems[i - 1]?.id || null;
-            const nextId = flattenedItems[i + 1]?.id || null;
-
+            const prevNode = flattenedItems[i - 1] || null;
+            const nextNode = flattenedItems[i + 1] || null;
             return (
               <Node
                 key={id}
@@ -234,13 +266,21 @@ export default function Tree({
                 depth={depth}
                 text={text}
                 collapsed={!!collapsed}
-                onCollapse={() => handleCollapse(id)}
+                onCollapse={() => {
+                  handleCollapse(id, !collapsed);
+                }}
                 onAddFromNode={() =>
                   handleAddFromNode(parentId, id, index, collapsed)
                 }
-                onRemove={() => handleRemove(id, prevId)}
-                onMoveUp={() => move(prevId)}
-                onMoveDown={() => move(nextId)}
+                onRemove={() => handleRemove(id, prevNode?.id)}
+                onMoveUp={() => move(prevNode?.id)}
+                onMoveDown={() => move(nextNode?.id)}
+                onIndent={() =>
+                  handleIndent(
+                    prevNode?.parentId === parentId ? prevNode?.id : null,
+                    id,
+                  )
+                }
                 focused={focusedNode?.id === id}
                 cursor={focusedNode?.cursor || null}
                 showCollapseButton={children.length > 0}
