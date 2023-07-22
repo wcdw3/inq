@@ -30,9 +30,11 @@ import {
   getProjection,
   insertNode,
   removeChildrenOf,
+  removeItem,
   setProperty,
 } from './service';
 import { nanoid } from 'nanoid';
+import { Cursor } from '../element/type';
 
 const POINTER_DISTANCE = 5;
 
@@ -70,7 +72,10 @@ export default function Tree({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
-  const [focusedId, setFocusedId] = useState<UniqueIdentifier | null>(null);
+  const [focus, setFocus] = useState<{
+    id: UniqueIdentifier;
+    cursor: Cursor;
+  } | null>(null);
 
   const flattenedItems = useMemo(() => {
     const flattenedTree = flattenTree(tree, rootNodeId);
@@ -165,7 +170,27 @@ export default function Tree({
       }),
     }));
 
-    setFocusedId(newNode.id);
+    setFocus({
+      id: newNode.id,
+      cursor: 'start',
+    });
+  };
+
+  const handleRemove = (
+    id: UniqueIdentifier,
+    prevId: UniqueIdentifier | null,
+  ) => {
+    setTree((prev) => ({
+      ...prev,
+      children: removeItem(prev.children, id),
+    }));
+
+    if (prevId) {
+      setFocus({
+        id: prevId,
+        cursor: 'end',
+      });
+    }
   };
 
   const sensors = useSensors(
@@ -189,7 +214,7 @@ export default function Tree({
         strategy={verticalListSortingStrategy}
       >
         {flattenedItems.map(
-          ({ id, depth, text, collapsed, children, index, parentId }) => (
+          ({ id, depth, text, collapsed, children, index, parentId }, i) => (
             <Node
               key={id}
               id={id}
@@ -200,7 +225,10 @@ export default function Tree({
               onAddFromNode={() =>
                 handleAddFromNode(parentId, id, index, collapsed)
               }
-              focus={focusedId === id}
+              onRemove={() =>
+                handleRemove(id, flattenedItems[i - 1]?.id || null)
+              }
+              cursor={focus?.id === id ? focus.cursor : null}
               showCollapseButton={children.length > 0}
             />
           ),

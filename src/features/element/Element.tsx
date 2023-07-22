@@ -1,21 +1,21 @@
 import { Flex, HStack } from '@chakra-ui/react';
 import ElementIndicator, { ElementIndicatorProps } from './ElementIndicator';
-import ElementTextarea from './ElementTextarea';
-import { KeyboardEventHandler } from 'react';
+import ElementTextarea, { ElementTextareaProps } from './ElementTextarea';
+
+export interface ElementProps
+  extends Pick<ElementTextareaProps, 'cursor' | 'onKeyDown'> {
+  indicatorProps: ElementIndicatorProps;
+  text: string;
+  flex?: number;
+}
 
 export default function Element({
   indicatorProps,
   text,
-  focus,
+  cursor,
   onKeyDown,
   flex,
-}: {
-  indicatorProps: ElementIndicatorProps;
-  text: string;
-  focus: boolean;
-  onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
-  flex?: number;
-}) {
+}: ElementProps) {
   return (
     <HStack spacing={1.5} flex={flex}>
       <Flex alignSelf="flex-start" pt="0.3125rem">
@@ -24,7 +24,7 @@ export default function Element({
       <ElementTextarea
         defaultValue={text}
         onKeyDown={onKeyDown}
-        focus={focus}
+        cursor={cursor}
       />
     </HStack>
   );

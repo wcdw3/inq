@@ -185,3 +185,21 @@ export function insertNode(
 
   return newItems;
 }
+
+export function removeItem(items: Tree[], id: UniqueIdentifier) {
+  const newItems = [];
+
+  for (const item of items) {
+    if (item.id === id) {
+      continue;
+    }
+
+    if (item.children.length) {
+      item.children = removeItem(item.children, id);
+    }
+
+    newItems.push(item);
+  }
+
+  return newItems;
+}

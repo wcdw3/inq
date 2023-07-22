@@ -3,29 +3,31 @@ import type { UniqueIdentifier } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { INDENTION_WIDTH } from './const';
-import Element from '../element/Element';
+import Element, { ElementProps } from '../element/Element';
 import NodeCollapseButton from './NodeCollapseButton';
 import { KeyboardEventHandler } from 'react';
+
+interface NodeProps extends Pick<ElementProps, 'text' | 'cursor'> {
+  id: UniqueIdentifier;
+  depth: number;
+  collapsed: boolean;
+  showCollapseButton: boolean;
+  onCollapse: () => void;
+  onAddFromNode: () => void;
+  onRemove: () => void;
+}
 
 export default function Node({
   id,
   depth,
   text,
   collapsed,
-  focus,
+  cursor,
   showCollapseButton,
   onCollapse,
   onAddFromNode,
-}: {
-  id: UniqueIdentifier;
-  depth: number;
-  text: string;
-  collapsed: boolean;
-  focus: boolean;
-  showCollapseButton: boolean;
-  onCollapse: () => void;
-  onAddFromNode: () => void;
-}) {
+  onRemove,
+}: NodeProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
 
@@ -41,6 +43,9 @@ export default function Node({
 
     if (e.key === 'Enter') {
       onAddFromNode();
+      e.preventDefault();
+    } else if (e.key === 'Backspace' && e.currentTarget.value === '') {
+      onRemove();
       e.preventDefault();
     }
   };
@@ -60,7 +65,7 @@ export default function Node({
         />
       </Flex>
       <Element
-        focus={focus}
+        cursor={cursor}
         flex={1}
         onKeyDown={handleKeyDown}
         text={text}
