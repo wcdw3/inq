@@ -1,16 +1,17 @@
 import { Textarea, TextareaProps } from '@chakra-ui/react';
 import autosize from 'autosize';
 import { ChangeEventHandler, useEffect, useRef, useState } from 'react';
-import { Cursor } from './type';
 
 export interface ElementTextareaProps
   extends Omit<TextareaProps, 'onChange' | 'cursor'> {
   defaultValue: string;
-  cursor: Cursor;
+  focused: boolean;
+  cursor: 'start' | 'end' | null;
 }
 
 export default function ElementTextarea({
   defaultValue,
+  focused,
   cursor,
   ...props
 }: ElementTextareaProps) {
@@ -28,16 +29,18 @@ export default function ElementTextarea({
   }, [ref]);
 
   useEffect(() => {
-    if (cursor) {
+    if (focused) {
       const elem = ref.current;
       if (elem) {
         elem.focus();
         if (cursor === 'end') {
           elem.setSelectionRange(elem.value.length, elem.value.length);
+        } else if (cursor === 'start') {
+          elem.setSelectionRange(0, 0);
         }
       }
     }
-  }, [cursor]);
+  }, [focused, cursor]);
 
   return (
     <Textarea

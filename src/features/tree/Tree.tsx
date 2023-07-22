@@ -72,7 +72,7 @@ export default function Tree({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
-  const [focus, setFocus] = useState<{
+  const [focusedNode, setFocusedNode] = useState<{
     id: UniqueIdentifier;
     cursor: Cursor;
   } | null>(null);
@@ -170,7 +170,7 @@ export default function Tree({
       }),
     }));
 
-    setFocus({
+    setFocusedNode({
       id: newNode.id,
       cursor: 'start',
     });
@@ -186,9 +186,18 @@ export default function Tree({
     }));
 
     if (prevId) {
-      setFocus({
+      setFocusedNode({
         id: prevId,
         cursor: 'end',
+      });
+    }
+  };
+
+  const move = (id: UniqueIdentifier | null) => {
+    if (id) {
+      setFocusedNode({
+        id,
+        cursor: null,
       });
     }
   };
@@ -214,24 +223,30 @@ export default function Tree({
         strategy={verticalListSortingStrategy}
       >
         {flattenedItems.map(
-          ({ id, depth, text, collapsed, children, index, parentId }, i) => (
-            <Node
-              key={id}
-              id={id}
-              depth={depth}
-              text={text}
-              collapsed={!!collapsed}
-              onCollapse={() => handleCollapse(id)}
-              onAddFromNode={() =>
-                handleAddFromNode(parentId, id, index, collapsed)
-              }
-              onRemove={() =>
-                handleRemove(id, flattenedItems[i - 1]?.id || null)
-              }
-              cursor={focus?.id === id ? focus.cursor : null}
-              showCollapseButton={children.length > 0}
-            />
-          ),
+          ({ id, depth, text, collapsed, children, index, parentId }, i) => {
+            const prevId = flattenedItems[i - 1]?.id || null;
+            const nextId = flattenedItems[i + 1]?.id || null;
+
+            return (
+              <Node
+                key={id}
+                id={id}
+                depth={depth}
+                text={text}
+                collapsed={!!collapsed}
+                onCollapse={() => handleCollapse(id)}
+                onAddFromNode={() =>
+                  handleAddFromNode(parentId, id, index, collapsed)
+                }
+                onRemove={() => handleRemove(id, prevId)}
+                onMoveUp={() => move(prevId)}
+                onMoveDown={() => move(nextId)}
+                focused={focusedNode?.id === id}
+                cursor={focusedNode?.cursor || null}
+                showCollapseButton={children.length > 0}
+              />
+            );
+          },
         )}
         {createPortal(
           <DragOverlay dropAnimation={dropAnimationConfig} />,

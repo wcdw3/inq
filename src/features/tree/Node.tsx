@@ -7,7 +7,7 @@ import Element, { ElementProps } from '../element/Element';
 import NodeCollapseButton from './NodeCollapseButton';
 import { KeyboardEventHandler } from 'react';
 
-interface NodeProps extends Pick<ElementProps, 'text' | 'cursor'> {
+interface NodeProps extends Pick<ElementProps, 'text' | 'focused' | 'cursor'> {
   id: UniqueIdentifier;
   depth: number;
   collapsed: boolean;
@@ -15,6 +15,8 @@ interface NodeProps extends Pick<ElementProps, 'text' | 'cursor'> {
   onCollapse: () => void;
   onAddFromNode: () => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }
 
 export default function Node({
@@ -22,11 +24,14 @@ export default function Node({
   depth,
   text,
   collapsed,
+  focused,
   cursor,
   showCollapseButton,
   onCollapse,
   onAddFromNode,
   onRemove,
+  onMoveUp,
+  onMoveDown,
 }: NodeProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
@@ -47,6 +52,12 @@ export default function Node({
     } else if (e.key === 'Backspace' && e.currentTarget.value === '') {
       onRemove();
       e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      onMoveUp();
+      e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+      onMoveDown();
+      e.preventDefault();
     }
   };
 
@@ -65,6 +76,7 @@ export default function Node({
         />
       </Flex>
       <Element
+        focused={focused}
         cursor={cursor}
         flex={1}
         onKeyDown={handleKeyDown}

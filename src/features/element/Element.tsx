@@ -3,7 +3,7 @@ import ElementIndicator, { ElementIndicatorProps } from './ElementIndicator';
 import ElementTextarea, { ElementTextareaProps } from './ElementTextarea';
 
 export interface ElementProps
-  extends Pick<ElementTextareaProps, 'cursor' | 'onKeyDown'> {
+  extends Pick<ElementTextareaProps, 'focused' | 'cursor' | 'onKeyDown'> {
   indicatorProps: ElementIndicatorProps;
   text: string;
   flex?: number;
@@ -12,6 +12,7 @@ export interface ElementProps
 export default function Element({
   indicatorProps,
   text,
+  focused,
   cursor,
   onKeyDown,
   flex,
@@ -24,6 +25,7 @@ export default function Element({
       <ElementTextarea
         defaultValue={text}
         onKeyDown={onKeyDown}
+        focused={focused}
         cursor={cursor}
       />
     </HStack>
