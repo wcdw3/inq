@@ -18,6 +18,7 @@ interface NodeProps extends Pick<ElementProps, 'text' | 'focused' | 'cursor'> {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onIndent: () => void;
+  onOutdent: () => void;
 }
 
 export default function Node({
@@ -34,6 +35,7 @@ export default function Node({
   onMoveUp,
   onMoveDown,
   onIndent,
+  onOutdent,
 }: NodeProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
@@ -61,7 +63,11 @@ export default function Node({
       onMoveDown();
       e.preventDefault();
     } else if (e.key === 'Tab') {
-      onIndent();
+      if (e.shiftKey) {
+        onOutdent();
+      } else {
+        onIndent();
+      }
       e.preventDefault();
     }
   };

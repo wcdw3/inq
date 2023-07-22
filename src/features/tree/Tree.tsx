@@ -27,6 +27,7 @@ import {
   buildTree,
   cloneObject,
   flattenTree,
+  getPrevSiblingId,
   getProjection,
   insertNode,
   removeChildrenOf,
@@ -205,10 +206,9 @@ export default function Tree({
     }
   };
 
-  const handleIndent = (
-    prevSiblingId: UniqueIdentifier | null,
-    targetId: UniqueIdentifier,
-  ) => {
+  const handleIndent = (targetId: UniqueIdentifier) => {
+    const prevSiblingId = getPrevSiblingId(flattenedItems, targetId);
+
     if (prevSiblingId) {
       const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
       const targetIndex = clonedItems.findIndex(({ id }) => id === targetId);
@@ -216,7 +216,6 @@ export default function Tree({
 
       clonedItems[targetIndex] = {
         ...targetNode,
-        depth: targetNode.depth + 1,
         parentId: prevSiblingId,
       };
 
@@ -228,6 +227,26 @@ export default function Tree({
       clonedItems[prevSiblingIndex] = {
         ...prevSiblingNode,
         collapsed: false,
+      };
+
+      const newTree = buildTree(clonedItems, rootNodeId);
+      setTree(newTree);
+    }
+  };
+
+  const handleOutdent = (
+    parentId: UniqueIdentifier | null,
+    targetId: UniqueIdentifier,
+  ) => {
+    if (parentId !== rootNodeId) {
+      const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
+      const parentIndex = clonedItems.findIndex(({ id }) => id === parentId);
+      const parentNode = clonedItems[parentIndex];
+      const targetIndex = clonedItems.findIndex(({ id }) => id === targetId);
+      const targetNode = clonedItems[targetIndex];
+      clonedItems[targetIndex] = {
+        ...targetNode,
+        parentId: parentNode.parentId,
       };
 
       const newTree = buildTree(clonedItems, rootNodeId);
@@ -275,12 +294,8 @@ export default function Tree({
                 onRemove={() => handleRemove(id, prevNode?.id)}
                 onMoveUp={() => move(prevNode?.id)}
                 onMoveDown={() => move(nextNode?.id)}
-                onIndent={() =>
-                  handleIndent(
-                    prevNode?.parentId === parentId ? prevNode?.id : null,
-                    id,
-                  )
-                }
+                onIndent={() => handleIndent(id)}
+                onOutdent={() => handleOutdent(parentId, id)}
                 focused={focusedNode?.id === id}
                 cursor={focusedNode?.cursor || null}
                 showCollapseButton={children.length > 0}

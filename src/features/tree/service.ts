@@ -127,11 +127,11 @@ export function buildTree(
   const items = flattenedItems.map((item) => ({ ...item, children: [] }));
 
   for (const item of items) {
-    const { id, children, text } = item;
+    const { id, children, text, collapsed } = item;
     const parentId = item.parentId ?? root.id;
     const parent = nodes[parentId] ?? findItem(items, parentId);
 
-    nodes[id] = { id, children, text };
+    nodes[id] = { id, children, text, collapsed };
     parent.children.push(item);
   }
 
@@ -202,4 +202,23 @@ export function removeItem(items: Tree[], id: UniqueIdentifier) {
   }
 
   return newItems;
+}
+
+export function getPrevSiblingId(
+  flattenedItems: FlattenedItem[],
+  id: UniqueIdentifier,
+) {
+  const idx = flattenedItems.findIndex(({ id: _id }) => _id === id);
+  const item = flattenedItems[idx];
+
+  let prevSiblingId: UniqueIdentifier | null = null;
+
+  for (let i = idx - 1; i >= 0; i--) {
+    const _item = flattenedItems[i];
+    if (_item.parentId === item.parentId) {
+      prevSiblingId = _item.id;
+    }
+  }
+
+  return prevSiblingId;
 }
