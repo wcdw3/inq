@@ -29,7 +29,6 @@ import {
   flattenTree,
   getPrevSiblingId,
   getProjection,
-  insertNode,
   removeChildrenOf,
   removeItem,
   setProperty,
@@ -153,12 +152,7 @@ export default function Tree({
     }));
   };
 
-  const handleAddFromNode = (
-    parentId: UniqueIdentifier,
-    id: UniqueIdentifier,
-    index: number,
-    collapsed?: boolean,
-  ) => {
+  const handleAddFromNode = (id: UniqueIdentifier) => {
     const newNode = {
       id: nanoid(),
       children: [],
@@ -166,13 +160,24 @@ export default function Tree({
       collapsed: true,
     };
 
-    setTree((tree) => ({
-      ...tree,
-      children: insertNode(tree.children, newNode, {
-        parentId: collapsed ? parentId : id,
-        index: collapsed ? index + 1 : 0,
-      }),
-    }));
+    const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
+    const index = clonedItems.findIndex(({ id: _id }) => _id === id);
+    const node = clonedItems[index];
+
+    clonedItems.push({
+      ...newNode,
+      depth: 0,
+      index: 0,
+      parentId: node.collapsed ? node.parentId : node.id,
+    });
+
+    const sortedItems = arrayMove(
+      clonedItems,
+      clonedItems.length - 1,
+      index + 1,
+    );
+    const newTree = buildTree(sortedItems, rootNodeId);
+    setTree(newTree);
 
     setFocusedNode({
       id: newNode.id,
@@ -275,7 +280,7 @@ export default function Tree({
         strategy={verticalListSortingStrategy}
       >
         {flattenedItems.map(
-          ({ id, depth, text, collapsed, children, index, parentId }, i) => {
+          ({ id, depth, text, collapsed, children, parentId }, i) => {
             const prevNode = flattenedItems[i - 1] || null;
             const nextNode = flattenedItems[i + 1] || null;
             return (
@@ -288,9 +293,7 @@ export default function Tree({
                 onCollapse={() => {
                   handleCollapse(id, !collapsed);
                 }}
-                onAddFromNode={() =>
-                  handleAddFromNode(parentId, id, index, collapsed)
-                }
+                onAddFromNode={() => handleAddFromNode(id)}
                 onRemove={() => handleRemove(id, prevNode?.id)}
                 onMoveUp={() => move(prevNode?.id)}
                 onMoveDown={() => move(nextNode?.id)}

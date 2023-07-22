@@ -162,30 +162,6 @@ export function setProperty<T extends keyof Tree>(
   return [...items];
 }
 
-export function insertNode(
-  items: Tree[],
-  newNode: Tree,
-  position: { parentId: UniqueIdentifier; index: number },
-): Tree[] {
-  const newItems = [];
-
-  for (const item of items) {
-    if (item.id === position.parentId) {
-      const newChildren = [...item.children];
-      newChildren.splice(position.index, 0, newNode);
-      item.children = newChildren;
-    }
-
-    if (item.children.length > 0) {
-      item.children = insertNode(item.children, newNode, position);
-    }
-
-    newItems.push(item);
-  }
-
-  return newItems;
-}
-
 export function removeItem(items: Tree[], id: UniqueIdentifier) {
   const newItems = [];
 
