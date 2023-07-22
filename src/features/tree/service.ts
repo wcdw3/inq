@@ -193,6 +193,7 @@ export function getPrevSiblingId(
     const _item = flattenedItems[i];
     if (_item.parentId === item.parentId) {
       prevSiblingId = _item.id;
+      break;
     }
   }
 
