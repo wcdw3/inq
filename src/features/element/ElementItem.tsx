@@ -1,23 +1,25 @@
 import { Flex, HStack, IconButton, IconButtonProps } from '@chakra-ui/react';
-import ElementTextarea, { ElementTextareaProps } from './ElementTextarea';
+import ElementItemTextarea, {
+  ElementItemTextareaProps,
+} from './ElementItemTextarea';
 import CircleIcon from '../icon/CircleIcon';
 import { KeyboardEventHandler, useState } from 'react';
 
-export interface ElementProps
-  extends Pick<ElementTextareaProps, 'focused' | 'cursor' | 'onKeyDown'> {
+export interface ElementItemProps
+  extends Pick<ElementItemTextareaProps, 'focused' | 'cursor' | 'onKeyDown'> {
   indicatorProps: Omit<IconButtonProps, 'aria-label'>;
   text: string;
   flex?: number;
 }
 
-export default function Element({
+export default function ElementItem({
   indicatorProps,
   text,
   focused,
   cursor,
   onKeyDown,
   flex,
-}: ElementProps) {
+}: ElementItemProps) {
   const [completed, setCompleted] = useState(false);
   const handleDoubleClick = () => {
     setCompleted((prev) => !prev);
@@ -52,7 +54,7 @@ export default function Element({
           onDoubleClick={handleDoubleClick}
         />
       </Flex>
-      <ElementTextarea
+      <ElementItemTextarea
         defaultValue={text}
         onKeyDown={handleKeyDown}
         focused={focused}

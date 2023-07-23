@@ -4,29 +4,42 @@ export default {
   collapsed: true,
   children: [
     {
-      id: '1',
-      text: '1',
+      id: 'n_1',
       collapsed: false,
       children: [
         {
-          id: '1-1',
-          text: '1-1',
+          id: 'n_1-1',
           collapsed: true,
           children: [],
+          element: {
+            id: 'e_1-1',
+            text: '1-1',
+          },
         },
         {
-          id: '1-2',
-          text: '1-2',
+          id: 'n_1-2',
           collapsed: true,
           children: [],
+          element: {
+            id: 'e_1-2',
+            text: '1-2',
+          },
         },
       ],
+      element: {
+        id: 'e_1',
+        text: '1',
+      },
     },
     {
-      id: '2',
+      id: 'n_2',
       text: '2',
       collapsed: true,
       children: [],
+      element: {
+        id: 'e_2',
+        text: '2',
+      },
     },
   ],
 };

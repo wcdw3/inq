@@ -20,21 +20,22 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
-import Node from './Node';
+import TreeItem from './TreeItem';
 import { INDENTION_WIDTH } from './const';
-import type { Tree } from './type';
+import type { Node } from './type';
 import {
-  buildTree,
+  buildNodes,
   cloneObject,
-  flattenTree,
+  flattenNodes,
   getPrevSiblingId,
   getProjection,
   removeChildrenOf,
-  removeItem,
+  removeNode,
   setProperty,
 } from './service';
 import { nanoid } from 'nanoid';
 import { Cursor } from '../element/type';
+import { createEmptyElement } from '../element/service';
 
 const POINTER_DISTANCE = 5;
 
@@ -62,13 +63,13 @@ const dropAnimationConfig: DropAnimation = {
 };
 
 export default function Tree({
-  defaultTree,
-  rootNodeId,
+  defaultNodes,
+  rootId,
 }: {
-  defaultTree: Tree;
-  rootNodeId: UniqueIdentifier;
+  defaultNodes: Node[];
+  rootId: UniqueIdentifier;
 }) {
-  const [tree, setTree] = useState(() => defaultTree);
+  const [nodes, setNodes] = useState(() => defaultNodes);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
@@ -77,29 +78,29 @@ export default function Tree({
     cursor: Cursor;
   } | null>(null);
 
-  const flattenedItems = useMemo(() => {
-    const flattenedTree = flattenTree(tree, rootNodeId);
-    const collapsedItems = flattenedTree.reduce<UniqueIdentifier[]>(
+  const flattenedNodes = useMemo(() => {
+    const _nodes = flattenNodes(nodes, rootId);
+    const collapsedNodes = _nodes.reduce<UniqueIdentifier[]>(
       (acc, { children, collapsed, id }) =>
         collapsed && children.length ? [...acc, id] : acc,
       [],
     );
 
     return removeChildrenOf(
-      flattenedTree,
-      activeId ? [activeId, ...collapsedItems] : collapsedItems,
+      _nodes,
+      activeId ? [activeId, ...collapsedNodes] : collapsedNodes,
     );
-  }, [tree, activeId, rootNodeId]);
+  }, [nodes, activeId, rootId]);
 
   const projected =
     activeId && overId
       ? getProjection(
-          flattenedItems,
+          flattenedNodes,
           activeId,
           overId,
           offsetLeft,
           INDENTION_WIDTH,
-          rootNodeId,
+          rootId,
         )
       : null;
 
@@ -128,17 +129,17 @@ export default function Tree({
 
     if (projected && over) {
       const { depth, parentId } = projected;
-      const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
-      const overIndex = clonedItems.findIndex(({ id }) => id === over.id);
-      const activeIndex = clonedItems.findIndex(({ id }) => id === active.id);
-      const activeTreeItem = clonedItems[activeIndex];
+      const clonedNodes = cloneObject(flattenNodes(nodes, rootId));
+      const overIndex = clonedNodes.findIndex(({ id }) => id === over.id);
+      const activeIndex = clonedNodes.findIndex(({ id }) => id === active.id);
+      const activeTreeItem = clonedNodes[activeIndex];
 
-      clonedItems[activeIndex] = { ...activeTreeItem, depth, parentId };
+      clonedNodes[activeIndex] = { ...activeTreeItem, depth, parentId };
 
-      const sortedItems = arrayMove(clonedItems, activeIndex, overIndex);
-      const newTree = buildTree(sortedItems, rootNodeId);
+      const sortedNodes = arrayMove(clonedNodes, activeIndex, overIndex);
+      const newNodes = buildNodes(sortedNodes, rootId);
 
-      setTree(newTree);
+      setNodes(newNodes);
     }
   };
 
@@ -146,38 +147,35 @@ export default function Tree({
     id: UniqueIdentifier,
     newCollapsed: boolean | undefined,
   ) => {
-    setTree((tree) => ({
-      ...tree,
-      children: setProperty(tree.children, id, 'collapsed', newCollapsed),
-    }));
+    setNodes((nodes) => setProperty(nodes, id, 'collapsed', newCollapsed));
   };
 
   const handleAddFromNode = (id: UniqueIdentifier) => {
     const newNode = {
       id: nanoid(),
       children: [],
-      text: '',
       collapsed: true,
+      element: createEmptyElement(),
     };
 
-    const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
-    const index = clonedItems.findIndex(({ id: _id }) => _id === id);
-    const node = clonedItems[index];
+    const clonedNodes = cloneObject(flattenNodes(nodes, rootId));
+    const index = clonedNodes.findIndex(({ id: _id }) => _id === id);
+    const node = clonedNodes[index];
 
-    clonedItems.push({
+    clonedNodes.push({
       ...newNode,
       depth: 0,
       index: 0,
       parentId: node.collapsed ? node.parentId : node.id,
     });
 
-    const sortedItems = arrayMove(
-      clonedItems,
-      clonedItems.length - 1,
+    const sortedNodes = arrayMove(
+      clonedNodes,
+      clonedNodes.length - 1,
       index + 1,
     );
-    const newTree = buildTree(sortedItems, rootNodeId);
-    setTree(newTree);
+    const newNodes = buildNodes(sortedNodes, rootId);
+    setNodes(newNodes);
 
     setFocusedNode({
       id: newNode.id,
@@ -189,10 +187,7 @@ export default function Tree({
     id: UniqueIdentifier,
     prevId: UniqueIdentifier | null,
   ) => {
-    setTree((prev) => ({
-      ...prev,
-      children: removeItem(prev.children, id),
-    }));
+    setNodes((prev) => removeNode(prev, id));
 
     if (prevId) {
       setFocusedNode({
@@ -212,30 +207,30 @@ export default function Tree({
   };
 
   const handleIndent = (targetId: UniqueIdentifier) => {
-    const prevSiblingId = getPrevSiblingId(flattenedItems, targetId);
+    const prevSiblingId = getPrevSiblingId(flattenedNodes, targetId);
 
     if (prevSiblingId) {
-      const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
-      const targetIndex = clonedItems.findIndex(({ id }) => id === targetId);
-      const targetNode = clonedItems[targetIndex];
+      const clonedNodes = cloneObject(flattenNodes(nodes, rootId));
+      const targetIndex = clonedNodes.findIndex(({ id }) => id === targetId);
+      const targetNode = clonedNodes[targetIndex];
 
-      clonedItems[targetIndex] = {
+      clonedNodes[targetIndex] = {
         ...targetNode,
         parentId: prevSiblingId,
       };
 
-      const prevSiblingIndex = clonedItems.findIndex(
+      const prevSiblingIndex = clonedNodes.findIndex(
         ({ id }) => id === prevSiblingId,
       );
-      const prevSiblingNode = clonedItems[prevSiblingIndex];
+      const prevSiblingNode = clonedNodes[prevSiblingIndex];
 
-      clonedItems[prevSiblingIndex] = {
+      clonedNodes[prevSiblingIndex] = {
         ...prevSiblingNode,
         collapsed: false,
       };
 
-      const newTree = buildTree(clonedItems, rootNodeId);
-      setTree(newTree);
+      const newNodes = buildNodes(clonedNodes, rootId);
+      setNodes(newNodes);
     }
   };
 
@@ -243,19 +238,19 @@ export default function Tree({
     parentId: UniqueIdentifier | null,
     targetId: UniqueIdentifier,
   ) => {
-    if (parentId !== rootNodeId) {
-      const clonedItems = cloneObject(flattenTree(tree, rootNodeId));
-      const parentIndex = clonedItems.findIndex(({ id }) => id === parentId);
-      const parentNode = clonedItems[parentIndex];
-      const targetIndex = clonedItems.findIndex(({ id }) => id === targetId);
-      const targetNode = clonedItems[targetIndex];
-      clonedItems[targetIndex] = {
+    if (parentId !== rootId) {
+      const clonedNodes = cloneObject(flattenNodes(nodes, rootId));
+      const parentIndex = clonedNodes.findIndex(({ id }) => id === parentId);
+      const parentNode = clonedNodes[parentIndex];
+      const targetIndex = clonedNodes.findIndex(({ id }) => id === targetId);
+      const targetNode = clonedNodes[targetIndex];
+      clonedNodes[targetIndex] = {
         ...targetNode,
         parentId: parentNode.parentId,
       };
 
-      const newTree = buildTree(clonedItems, rootNodeId);
-      setTree(newTree);
+      const newNodes = buildNodes(clonedNodes, rootId);
+      setNodes(newNodes);
     }
   };
 
@@ -276,19 +271,18 @@ export default function Tree({
       onDragOver={handleDragOver}
     >
       <SortableContext
-        items={flattenedItems.map(({ id }) => id)}
+        items={flattenedNodes.map(({ id }) => id)}
         strategy={verticalListSortingStrategy}
       >
-        {flattenedItems.map(
-          ({ id, depth, text, collapsed, children, parentId }, i) => {
-            const prevNode = flattenedItems[i - 1] || null;
-            const nextNode = flattenedItems[i + 1] || null;
+        {flattenedNodes.map(
+          ({ id, depth, collapsed, children, parentId, element }, i) => {
+            const prevNode = flattenedNodes[i - 1] || null;
+            const nextNode = flattenedNodes[i + 1] || null;
             return (
-              <Node
+              <TreeItem
                 key={id}
                 id={id}
                 depth={depth}
-                text={text}
                 collapsed={!!collapsed}
                 onCollapse={() => {
                   handleCollapse(id, !collapsed);
@@ -302,6 +296,7 @@ export default function Tree({
                 focused={focusedNode?.id === id}
                 cursor={focusedNode?.cursor || null}
                 showCollapseButton={children.length > 0}
+                element={element}
               />
             );
           },

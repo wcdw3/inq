@@ -3,15 +3,17 @@ import type { UniqueIdentifier } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { INDENTION_WIDTH } from './const';
-import Element, { ElementProps } from '../element/Element';
-import NodeCollapseButton from './NodeCollapseButton';
+import ElementItem, { ElementItemProps } from '../element/ElementItem';
+import type { Element } from '../element/type';
+import NodeCollapseButton from './TreeItemCollapseButton';
 import { KeyboardEventHandler } from 'react';
 
-interface NodeProps extends Pick<ElementProps, 'text' | 'focused' | 'cursor'> {
+interface TreeItemProps extends Pick<ElementItemProps, 'focused' | 'cursor'> {
   id: UniqueIdentifier;
   depth: number;
   collapsed: boolean;
   showCollapseButton: boolean;
+  element: Element;
   onCollapse: () => void;
   onAddFromNode: () => void;
   onRemove: () => void;
@@ -21,10 +23,10 @@ interface NodeProps extends Pick<ElementProps, 'text' | 'focused' | 'cursor'> {
   onOutdent: () => void;
 }
 
-export default function Node({
+export default function TreeItem({
   id,
   depth,
-  text,
+  element,
   collapsed,
   focused,
   cursor,
@@ -36,7 +38,7 @@ export default function Node({
   onMoveDown,
   onIndent,
   onOutdent,
-}: NodeProps) {
+}: TreeItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
 
@@ -86,16 +88,16 @@ export default function Node({
           onClick={onCollapse}
         />
       </Flex>
-      <Element
+      <ElementItem
         focused={focused}
         cursor={cursor}
         flex={1}
         onKeyDown={handleKeyDown}
-        text={text}
         indicatorProps={{
           ...attributes,
           ...listeners,
         }}
+        {...element}
       />
     </HStack>
   );

@@ -2,19 +2,19 @@ import { Textarea, TextareaProps } from '@chakra-ui/react';
 import autosize from 'autosize';
 import { ChangeEventHandler, useEffect, useRef, useState } from 'react';
 
-export interface ElementTextareaProps
+export interface ElementItemTextareaProps
   extends Omit<TextareaProps, 'onChange' | 'cursor'> {
   defaultValue: string;
   focused: boolean;
   cursor: 'start' | 'end' | null;
 }
 
-export default function ElementTextarea({
+export default function ElementItemTextarea({
   defaultValue,
   focused,
   cursor,
   ...props
-}: ElementTextareaProps) {
+}: ElementItemTextareaProps) {
   const [value, setValue] = useState<string>(() => defaultValue);
   const ref = useRef<HTMLTextAreaElement>(null);
 

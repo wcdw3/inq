@@ -1,39 +1,40 @@
 import type { UniqueIdentifier } from '@dnd-kit/core';
-import type { Tree, FlattenedItem } from './type';
+import type { Node, FlattenedNode } from './type';
 import { arrayMove } from '@dnd-kit/sortable';
+import { createEmptyElement } from '../element/service';
 
 export function flatten(
-  items: Tree[],
+  nodes: Node[],
   parentId: UniqueIdentifier,
   depth = 0,
-): FlattenedItem[] {
-  return items.reduce<FlattenedItem[]>(
-    (acc, item, index) => [
+): FlattenedNode[] {
+  return nodes.reduce<FlattenedNode[]>(
+    (acc, node, index) => [
       ...acc,
-      { ...item, parentId, depth, index },
-      ...flatten(item.children, item.id, depth + 1),
+      { ...node, parentId, depth, index },
+      ...flatten(node.children, node.id, depth + 1),
     ],
     [],
   );
 }
 
-export function flattenTree(
-  tree: Tree,
-  rootNodeId: UniqueIdentifier,
-): FlattenedItem[] {
-  return flatten(tree.children, rootNodeId);
+export function flattenNodes(
+  nodes: Node[],
+  rootId: UniqueIdentifier,
+): FlattenedNode[] {
+  return flatten(nodes, rootId);
 }
 
 export function removeChildrenOf(
-  items: FlattenedItem[],
+  nodes: FlattenedNode[],
   ids: UniqueIdentifier[],
 ) {
   const excludeParentIds = [...ids];
 
-  return items.filter((item) => {
-    if (item.parentId && excludeParentIds.includes(item.parentId)) {
-      if (item.children.length) {
-        excludeParentIds.push(item.id);
+  return nodes.filter((node) => {
+    if (node.parentId && excludeParentIds.includes(node.parentId)) {
+      if (node.children.length) {
+        excludeParentIds.push(node.id);
       }
       return false;
     }
@@ -46,42 +47,42 @@ export function getDragDepth(offset: number, indentationWidth: number) {
   return Math.round(offset / indentationWidth);
 }
 
-export function getMaxDepth({ previousItem }: { previousItem: FlattenedItem }) {
-  if (previousItem) {
-    return previousItem.depth + 1;
+export function getMaxDepth({ prevNode }: { prevNode: FlattenedNode }) {
+  if (prevNode) {
+    return prevNode.depth + 1;
   }
 
   return 0;
 }
 
-export function getMinDepth({ nextItem }: { nextItem: FlattenedItem }) {
-  if (nextItem) {
-    return nextItem.depth;
+export function getMinDepth({ nextNode }: { nextNode: FlattenedNode }) {
+  if (nextNode) {
+    return nextNode.depth;
   }
 
   return 0;
 }
 
 export function getProjection(
-  items: FlattenedItem[],
+  nodes: FlattenedNode[],
   activeId: UniqueIdentifier,
   overId: UniqueIdentifier,
   dragOffset: number,
   indentationWidth: number,
-  rootNodeId: UniqueIdentifier,
+  rootId: UniqueIdentifier,
 ) {
-  const overItemIndex = items.findIndex(({ id }) => id === overId);
-  const activeItemIndex = items.findIndex(({ id }) => id === activeId);
-  const activeItem = items[activeItemIndex];
-  const newItems = arrayMove(items, activeItemIndex, overItemIndex);
-  const previousItem = newItems[overItemIndex - 1];
-  const nextItem = newItems[overItemIndex + 1];
+  const overNodeIndex = nodes.findIndex(({ id }) => id === overId);
+  const activeNodeIndex = nodes.findIndex(({ id }) => id === activeId);
+  const activeNode = nodes[activeNodeIndex];
+  const newNodes = arrayMove(nodes, activeNodeIndex, overNodeIndex);
+  const prevNode = newNodes[overNodeIndex - 1];
+  const nextNode = newNodes[overNodeIndex + 1];
   const dragDepth = getDragDepth(dragOffset, indentationWidth);
-  const projectedDepth = activeItem.depth + dragDepth;
+  const projectedDepth = activeNode.depth + dragDepth;
   const maxDepth = getMaxDepth({
-    previousItem,
+    prevNode,
   });
-  const minDepth = getMinDepth({ nextItem });
+  const minDepth = getMinDepth({ nextNode });
   let depth = projectedDepth;
 
   if (projectedDepth >= maxDepth) {
@@ -91,109 +92,112 @@ export function getProjection(
   }
 
   function getParentId() {
-    if (depth === 0 || !previousItem) {
-      return rootNodeId;
+    if (depth === 0 || !prevNode) {
+      return rootId;
     }
 
-    if (depth === previousItem.depth) {
-      return previousItem.parentId;
+    if (depth === prevNode.depth) {
+      return prevNode.parentId;
     }
 
-    if (depth > previousItem.depth) {
-      return previousItem.id;
+    if (depth > prevNode.depth) {
+      return prevNode.id;
     }
 
-    const newParent = newItems
-      .slice(0, overItemIndex)
+    const newParent = newNodes
+      .slice(0, overNodeIndex)
       .reverse()
-      .find((item) => item.depth === depth)?.parentId;
+      .find((node) => node.depth === depth)?.parentId;
 
-    return newParent ?? rootNodeId;
+    return newParent ?? rootId;
   }
 
   return { depth, maxDepth, minDepth, parentId: getParentId() };
 }
 
-export function findItem(items: Tree[], itemId: UniqueIdentifier) {
-  return items.find(({ id }) => id === itemId);
+export function findNode(nodes: Node[], id: UniqueIdentifier) {
+  return nodes.find(({ id: _id }) => _id === id);
 }
 
-export function buildTree(
-  flattenedItems: FlattenedItem[],
-  rootNodeId: UniqueIdentifier,
-): Tree {
-  const root: Tree = { id: rootNodeId, children: [], text: 'Root' };
-  const nodes: Record<UniqueIdentifier, Tree> = { [root.id]: root };
-  const items = flattenedItems.map((item) => ({ ...item, children: [] }));
+export function buildNodes(
+  flattenedNodes: FlattenedNode[],
+  rootId: UniqueIdentifier,
+): Node[] {
+  const root: Node = {
+    id: rootId,
+    children: [],
+    element: createEmptyElement(),
+  };
+  const nodeMap: Record<UniqueIdentifier, Node> = { [root.id]: root };
+  const nodes = flattenedNodes.map((node) => ({ ...node, children: [] }));
 
-  for (const item of items) {
-    const { id, children, text, collapsed } = item;
-    const parentId = item.parentId ?? root.id;
-    const parent = nodes[parentId] ?? findItem(items, parentId);
+  for (const node of nodes) {
+    const { id, children, collapsed, element } = node;
+    const parentId = node.parentId ?? root.id;
+    const parent = nodeMap[parentId] ?? findNode(nodes, parentId);
 
-    nodes[id] = { id, children, text, collapsed };
-    parent.children.push(item);
+    nodeMap[id] = { id, children, collapsed, element };
+    parent.children.push(node);
   }
 
-  return root;
+  return root.children;
 }
 
 export function cloneObject<T extends object>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
 
-export function setProperty<T extends keyof Tree>(
-  items: Tree[],
+export function setProperty<T extends keyof Node>(
+  nodes: Node[],
   id: UniqueIdentifier,
   property: T,
-  newProperty: Tree[T],
+  newProperty: Node[T],
 ) {
-  for (const item of items) {
-    if (item.id === id) {
-      item[property] = newProperty;
+  for (const node of nodes) {
+    if (node.id === id) {
+      node[property] = newProperty;
       continue;
     }
 
-    if (item.children.length) {
-      item.children = setProperty(item.children, id, property, newProperty);
+    if (node.children.length) {
+      node.children = setProperty(node.children, id, property, newProperty);
     }
   }
 
-  return [...items];
+  return [...nodes];
 }
 
-export function removeItem(items: Tree[], id: UniqueIdentifier) {
-  const newItems = [];
+export function removeNode(nodes: Node[], id: UniqueIdentifier) {
+  const newNodes = [];
 
-  for (const item of items) {
-    if (item.id === id) {
+  for (const node of nodes) {
+    if (node.id === id) {
       continue;
     }
 
-    if (item.children.length) {
-      item.children = removeItem(item.children, id);
+    if (node.children.length) {
+      node.children = removeNode(node.children, id);
     }
 
-    newItems.push(item);
+    newNodes.push(node);
   }
 
-  return newItems;
+  return newNodes;
 }
 
-export function getPrevSiblingId(
-  flattenedItems: FlattenedItem[],
-  id: UniqueIdentifier,
-) {
-  const idx = flattenedItems.findIndex(({ id: _id }) => _id === id);
-  const item = flattenedItems[idx];
-
+export function getPrevSiblingId(nodes: FlattenedNode[], id: UniqueIdentifier) {
   let prevSiblingId: UniqueIdentifier | null = null;
 
-  for (let i = idx - 1; i >= 0; i--) {
-    const _item = flattenedItems[i];
-    if (_item.parentId === item.parentId) {
-      prevSiblingId = _item.id;
-      break;
+  const idx = nodes.findIndex(({ id: _id }) => _id === id);
+
+  if (idx > 0) {
+    const { parentId } = nodes[idx];
+    for (let i = idx - 1; i >= 0; i--) {
+      const node = nodes[i];
+      if (node.parentId === parentId) {
+        prevSiblingId = node.id;
+        break;
+      }
     }
   }
 
