@@ -1,7 +1,7 @@
 import { Flex, HStack, IconButton, IconButtonProps } from '@chakra-ui/react';
 import ElementTextarea, { ElementTextareaProps } from './ElementTextarea';
 import CircleIcon from '../icon/CircleIcon';
-import { useState } from 'react';
+import { KeyboardEventHandler, useState } from 'react';
 
 export interface ElementProps
   extends Pick<ElementTextareaProps, 'focused' | 'cursor' | 'onKeyDown'> {
@@ -23,6 +23,15 @@ export default function Element({
     setCompleted((prev) => !prev);
   };
 
+  const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      setCompleted((prev) => !prev);
+      e.preventDefault();
+    } else if (typeof onKeyDown === 'function') {
+      onKeyDown(e);
+    }
+  };
+
   return (
     <HStack
       spacing={1.5}
@@ -32,20 +41,20 @@ export default function Element({
         color: 'blackAlpha.600',
       })}
     >
-      <Flex alignSelf="flex-start" pt="0.3125rem">
+      <Flex alignSelf="flex-start" pt="0.4375rem">
         <IconButton
           variant="link"
           size="xs"
-          icon={<CircleIcon boxSize="2.5" />}
-          color="blackAlpha.600"
-          aria-label="Node Indicator"
+          icon={<CircleIcon boxSize="2" />}
+          color={completed ? undefined : 'blackAlpha.800'}
+          aria-label="Element Indicator"
           {...indicatorProps}
           onDoubleClick={handleDoubleClick}
         />
       </Flex>
       <ElementTextarea
         defaultValue={text}
-        onKeyDown={onKeyDown}
+        onKeyDown={handleKeyDown}
         focused={focused}
         cursor={cursor}
       />

@@ -1,6 +1,6 @@
 import { SVGAttributes } from 'react';
 
-export default function Path(props: SVGAttributes<SVGPathElement>) {
+export default function LinePath(props: SVGAttributes<SVGPathElement>) {
   return (
     <path
       stroke="currentColor"

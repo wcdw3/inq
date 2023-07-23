@@ -1,21 +1,17 @@
 import { IconProps } from '@chakra-ui/react';
 import Icon from './Icon';
-import Path from './Path';
 import { SVGAttributes } from 'react';
+import LinePath from './LinePath';
 
-export interface SinglePathIconProps
+export interface LineIconProps
   extends Pick<SVGAttributes<SVGPathElement>, 'd' | 'strokeWidth'> {
   boxSize: IconProps['boxSize'];
 }
 
-export default function SinglePathIcon({
-  boxSize,
-  d,
-  strokeWidth,
-}: SinglePathIconProps) {
+export default function LineIcon({ boxSize, d, strokeWidth }: LineIconProps) {
   return (
     <Icon boxSize={boxSize}>
-      <Path d={d} strokeWidth={strokeWidth} />
+      <LinePath d={d} strokeWidth={strokeWidth} />
     </Icon>
   );
 }

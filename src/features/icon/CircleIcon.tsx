@@ -1,11 +1,10 @@
-import SinglePathIcon, { SinglePathIconProps } from './SinglePathIcon';
+import SolidIcon, { SolidIconProps } from './SolidIcon';
 
-export default function CircleIcon(props: SinglePathIconProps) {
+export default function CircleIcon(props: SolidIconProps) {
   return (
-    <SinglePathIcon
-      strokeWidth="5"
+    <SolidIcon
       {...props}
-      d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+      d="M12 1C5.92487 1 1 5.92487 1 12C1 18.0751 5.92487 23 12 23C18.0751 23 23 18.0751 23 12C23 5.92487 18.0751 1 12 1Z"
     />
   );
 }
