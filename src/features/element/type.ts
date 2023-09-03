@@ -3,4 +3,4 @@ export interface Element {
   text: string;
 }
 
-export type Cursor = 'start' | 'end' | null;
+export type Cursor = 'start' | 'end' | undefined;

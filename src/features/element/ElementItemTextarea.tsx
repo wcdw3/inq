@@ -1,12 +1,13 @@
 import { Textarea, TextareaProps } from '@chakra-ui/react';
 import autosize from 'autosize';
 import { ChangeEventHandler, useEffect, useRef, useState } from 'react';
+import { Cursor } from './type';
 
 export interface ElementItemTextareaProps
   extends Omit<TextareaProps, 'onChange' | 'cursor'> {
   defaultValue: string;
   focused: boolean;
-  cursor: 'start' | 'end' | null;
+  cursor?: Cursor;
 }
 
 export default function ElementItemTextarea({

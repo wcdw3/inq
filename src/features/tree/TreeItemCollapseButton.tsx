@@ -3,7 +3,7 @@ import ChevronRightIcon from '../icon/ChevronRightIcon';
 import ChevronDownIcon from '../icon/ChevronDownIcon';
 import { MouseEventHandler } from 'react';
 
-export default function NodeCollapseButton({
+export default function TreeItemCollapseButton({
   collapsed,
   show,
   onClick,
