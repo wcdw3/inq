@@ -1,9 +1,10 @@
 import { Node } from './features/tree/type';
 
-const data: Node[] = [
+export const EXPANDED_NODE_IDS: Node['id'][] = ['1'];
+
+export const NODES: Node[] = [
   {
     id: '1',
-    collapsed: true,
     completed: true,
     element: {
       text: '1',
@@ -13,7 +14,6 @@ const data: Node[] = [
   {
     id: '2',
     completed: false,
-    collapsed: true,
     childrenIds: [],
     element: {
       text: '2',
@@ -21,7 +21,6 @@ const data: Node[] = [
   },
   {
     id: '1-1',
-    collapsed: false,
     completed: false,
     childrenIds: [],
     element: {
@@ -30,7 +29,6 @@ const data: Node[] = [
   },
   {
     id: '1-2',
-    collapsed: false,
     completed: false,
     childrenIds: [],
     element: {
@@ -38,5 +36,3 @@ const data: Node[] = [
     },
   },
 ];
-
-export default data;

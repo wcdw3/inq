@@ -8,7 +8,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import type { Node } from './type';
+import { ExpandedNodeIds, type Node } from './type';
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -45,12 +45,20 @@ const POINTER_DISTANCE = 5;
 
 type TreeProps = {
   defaultNodes: Node[];
+  defaultExpandedNodeIds: Node['id'][];
 };
 
-export default function Tree({ defaultNodes }: TreeProps) {
+export default function Tree({
+  defaultNodes,
+  defaultExpandedNodeIds,
+}: TreeProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [nodeMap, _setNodeMap] = useState<Map<Node['id'], Node>>(
     () => new Map(defaultNodes.map((node) => [node.id, node])),
+  );
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [expandedNodeIds, _setExpandedNodeIds] = useState<ExpandedNodeIds>(
+    () => new Set(defaultExpandedNodeIds),
   );
   const items = useMemo(() => nodeMapToItems(nodeMap), [nodeMap]);
 
@@ -70,13 +78,14 @@ export default function Tree({ defaultNodes }: TreeProps) {
       >
         {items.map(({ id, depth }) => {
           const node = nodeMap.get(id);
+          const collapsed = !expandedNodeIds.has(id);
 
           return node ? (
             <TreeItem
               key={id}
               id={id}
               depth={depth}
-              collapsed={node.collapsed}
+              collapsed={collapsed}
               showCollapseButton={node.childrenIds.length >= 0}
               element={node.element}
             />
