@@ -1,3 +1,4 @@
+/*
 import { useMemo, useState } from 'react';
 import type { UniqueIdentifier } from '@dnd-kit/core';
 import {
@@ -20,11 +21,10 @@ import {
   removeChildrenOf,
   removeNode,
   setProperty,
-} from './service';
+} from './__service';
 import { nanoid } from 'nanoid';
 import type { Node } from './type';
 import { Cursor } from '../element/type';
-import { createEmptyElement } from '../element/service';
 
 const POINTER_DISTANCE = 5;
 
@@ -284,3 +284,4 @@ export default function useTree(
     handleCollapse,
   };
 }
+*/

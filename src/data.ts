@@ -1,45 +1,42 @@
-export default {
-  id: 'root',
-  text: 'root',
-  collapsed: true,
-  children: [
-    {
-      id: 'n_1',
-      collapsed: false,
-      children: [
-        {
-          id: 'n_1-1',
-          collapsed: true,
-          children: [],
-          element: {
-            id: 'e_1-1',
-            text: '1-1',
-          },
-        },
-        {
-          id: 'n_1-2',
-          collapsed: true,
-          children: [],
-          element: {
-            id: 'e_1-2',
-            text: '1-2',
-          },
-        },
-      ],
-      element: {
-        id: 'e_1',
-        text: '1',
-      },
+import { Node } from './features/tree/type';
+
+const data: Node[] = [
+  {
+    id: '1',
+    collapsed: true,
+    completed: true,
+    element: {
+      text: '1',
     },
-    {
-      id: 'n_2',
+    childrenIds: ['1-1', '1-2'],
+  },
+  {
+    id: '2',
+    completed: false,
+    collapsed: true,
+    childrenIds: [],
+    element: {
       text: '2',
-      collapsed: true,
-      children: [],
-      element: {
-        id: 'e_2',
-        text: '2',
-      },
     },
-  ],
-};
+  },
+  {
+    id: '1-1',
+    collapsed: false,
+    completed: false,
+    childrenIds: [],
+    element: {
+      text: '1-1',
+    },
+  },
+  {
+    id: '1-2',
+    collapsed: false,
+    completed: false,
+    childrenIds: [],
+    element: {
+      text: '1-2',
+    },
+  },
+];
+
+export default data;

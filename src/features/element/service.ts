@@ -1,8 +1,7 @@
 import { Element } from './type';
 
-export function createEmptyElement(): Element {
+export function createNewElement(): Element {
   return {
-    id: '',
     text: '',
   };
 }

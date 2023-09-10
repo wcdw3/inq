@@ -1,34 +1,49 @@
-import { HStack } from '@chakra-ui/react';
-import type { UniqueIdentifier } from '@dnd-kit/core';
-import { useSortable } from '@dnd-kit/sortable';
+import { Flex, HStack, IconButton } from '@chakra-ui/react';
 import { CSS } from '@dnd-kit/utilities';
 import { INDENTION_WIDTH } from './const';
-import { ReactNode } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { UniqueIdentifier } from '@dnd-kit/core';
+import type { Element } from '../element/type';
+import TreeItemCollapseButton from './TreeItemCollapseButton';
+import CircleIcon from '../icon/CircleIcon';
+import useComplete from './useComplete';
+import ElementItem from '../element/ElementItem';
 
-interface TreeItemProps {
+type TreeItemProps = {
   id: UniqueIdentifier;
   depth: number;
-  collapseButton: ReactNode;
-  sortHandler: <P>(props: P) => JSX.Element;
-  children: ReactNode;
-}
+  collapsed: boolean;
+  showCollapseButton: boolean;
+  element: Element;
+  onClickCollapseButton?: React.MouseEventHandler;
+  appendNewNode?: (id: UniqueIdentifier) => void | undefined;
+};
 
 export default function TreeItem({
   id,
   depth,
-  collapseButton,
-  sortHandler,
-  children,
+  collapsed,
+  showCollapseButton,
+  element,
+  onClickCollapseButton,
+  appendNewNode,
 }: TreeItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
+  const { completed, toggle: toggleComplete } = useComplete();
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const SortHandler = sortHandler;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      appendNewNode?.(id);
+      e.preventDefault();
+    }
+  };
+
   return (
     <HStack
       spacing={1.5}
@@ -36,9 +51,32 @@ export default function TreeItem({
       style={style}
       ref={setNodeRef}
     >
-      {collapseButton}
-      <SortHandler {...attributes} {...listeners} />
-      {children}
+      <Flex alignSelf="flex-start" pt="0.125rem">
+        <TreeItemCollapseButton
+          collapsed={collapsed}
+          show={showCollapseButton}
+          onClick={onClickCollapseButton}
+        />
+      </Flex>
+      <Flex alignSelf="flex-start" pt="0.4375rem">
+        <IconButton
+          variant="link"
+          size="xs"
+          icon={<CircleIcon boxSize="2" />}
+          aria-label="Element Indicator"
+          color={completed ? undefined : 'blackAlpha.800'}
+          onDoubleClick={toggleComplete}
+          {...attributes}
+          {...listeners}
+        />
+      </Flex>
+      <ElementItem
+        focused={false}
+        flex={1}
+        completed={completed}
+        onKeyDown={handleKeyDown}
+        {...element}
+      />
     </HStack>
   );
 }

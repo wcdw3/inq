@@ -5,7 +5,7 @@ import data from './data';
 export default function App() {
   return (
     <Stack spacing={3} p="6">
-      <Tree defaultNodes={data.children} rootId={data.id} />
+      <Tree defaultNodes={data} />
     </Stack>
   );
 }

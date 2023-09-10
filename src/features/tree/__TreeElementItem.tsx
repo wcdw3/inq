@@ -1,9 +1,10 @@
+/*
 import { Flex, IconButton } from '@chakra-ui/react';
 import TreeItem from './TreeItem';
 import TreeItemCollapseButton from './TreeItemCollapseButton';
 import CircleIcon from '../icon/CircleIcon';
 import ElementItem from '../element/ElementItem';
-import useComplete from '../element/useComplete';
+import useComplete from './useComplete';
 import { mergeEventHandler } from '../../utils/keyboardEvent';
 import { Cursor } from '../element/type';
 import type { Element } from '../element/type';
@@ -80,3 +81,4 @@ export default function TreeElementItem({
     </TreeItem>
   );
 }
+*/

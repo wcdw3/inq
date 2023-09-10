@@ -1,19 +1,22 @@
-import type { UniqueIdentifier } from '@dnd-kit/core';
 import {
   DndContext,
   DragOverlay,
   DropAnimation,
+  PointerSensor,
   defaultDropAnimation,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import type { Node } from './type';
 import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { createPortal } from 'react-dom';
-import type { Node } from './type';
-import TreeElementItem from './TreeElementItem';
-import useTree from './useTree';
+import TreeItem from './TreeItem';
+import { useMemo, useState } from 'react';
+import { nodeMapToItems } from './service';
 
 const dropAnimationConfig: DropAnimation = {
   keyframes({ transform }) {
@@ -38,66 +41,47 @@ const dropAnimationConfig: DropAnimation = {
   },
 };
 
+const POINTER_DISTANCE = 5;
+
 type TreeProps = {
   defaultNodes: Node[];
-  rootId: UniqueIdentifier;
 };
 
-export default function Tree({ defaultNodes, rootId }: TreeProps) {
-  const {
-    sensors,
-    flattenedNodes,
-    focusedNode,
-    handleDragStart,
-    handleDragEnd,
-    handleDragMove,
-    handleDragOver,
-    handleKeyDown,
-    handleCollapse,
-  } = useTree(defaultNodes, rootId);
+export default function Tree({ defaultNodes }: TreeProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [nodeMap, _setNodeMap] = useState<Map<Node['id'], Node>>(
+    () => new Map(defaultNodes.map((node) => [node.id, node])),
+  );
+  const items = useMemo(() => nodeMapToItems(nodeMap), [nodeMap]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: POINTER_DISTANCE,
+      },
+    }),
+  );
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragMove={handleDragMove}
-      onDragOver={handleDragOver}
-    >
+    <DndContext sensors={sensors}>
       <SortableContext
-        items={flattenedNodes.map(({ id }) => id)}
+        items={items.map(({ id }) => id)}
         strategy={verticalListSortingStrategy}
       >
-        {flattenedNodes.map(
-          ({ id, depth, collapsed, children, parentId, element }, i) => {
-            const prevNode = flattenedNodes[i - 1];
-            const nextNode = flattenedNodes[i + 1];
+        {items.map(({ id, depth }) => {
+          const node = nodeMap.get(id);
 
-            return (
-              <TreeElementItem
-                key={id}
-                id={id}
-                depth={depth}
-                collapsed={!!collapsed}
-                showCollapseButton={children.length > 0}
-                onClickCollapseButton={() => {
-                  handleCollapse(id, !collapsed);
-                }}
-                focused={focusedNode?.id === id}
-                cursor={focusedNode?.cursor}
-                onKeyDown={(e) =>
-                  handleKeyDown(e, {
-                    id,
-                    prevId: prevNode?.id,
-                    nextId: nextNode?.id,
-                    parentId,
-                  })
-                }
-                element={element}
-              />
-            );
-          },
-        )}
+          return node ? (
+            <TreeItem
+              key={id}
+              id={id}
+              depth={depth}
+              collapsed={node.collapsed}
+              showCollapseButton={node.childrenIds.length >= 0}
+              element={node.element}
+            />
+          ) : null;
+        })}
         {createPortal(
           <DragOverlay dropAnimation={dropAnimationConfig} />,
           document.body,

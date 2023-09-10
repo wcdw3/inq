@@ -1,15 +1,14 @@
-import type { UniqueIdentifier } from '@dnd-kit/core';
 import type { Element } from '../element/type';
 
-export interface Node {
-  id: UniqueIdentifier;
-  children: Node[];
-  collapsed?: boolean;
+export type Node = {
+  id: string;
+  collapsed: boolean;
+  completed: boolean;
   element: Element;
-}
+  childrenIds: string[];
+};
 
-export interface FlattenedNode extends Node {
-  parentId: UniqueIdentifier;
+export type Item = {
+  id: Node['id'];
   depth: number;
-  index: number;
-}
+};
