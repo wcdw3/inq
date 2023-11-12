@@ -3,17 +3,17 @@ import { create } from 'zustand';
 import CircleIcon from './features/icon/CircleIcon';
 import { DragEventHandler, useRef } from 'react';
 
-type NodeView = {
+type Inode = {
   id: string;
   childrenIds: string[];
 };
 
-type NodeValue = {
+type Node = {
   id: string;
   text: string;
 };
 
-const NODE_VALUES: Map<string, NodeValue> = new Map([
+const NODE_VALUES: Map<string, Node> = new Map([
   [
     '1',
     {
@@ -58,15 +58,20 @@ const NODE_VALUES: Map<string, NodeValue> = new Map([
   ],
 ]);
 
+type DraggingItem = {
+  id: string;
+  parentId?: string;
+};
+
 type TreeViewState = {
-  view: Map<string, NodeView>;
-  draggingInfo?: DraggingInfo;
-  setDraggingInfo: (newDraggingInfo?: DraggingInfo) => void;
-  setItem: (id: string, childrenIds: string[]) => void;
+  inodes: Map<string, Inode>;
+  draggingItem?: DraggingItem;
+  setDraggingItem: (newItem?: DraggingItem) => void;
+  setInode: (id: string, childrenIds: string[]) => void;
 };
 
 const useTreeViewStore = create<TreeViewState>((set) => ({
-  view: new Map([
+  inodes: new Map([
     [
       '1',
       {
@@ -110,111 +115,193 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       },
     ],
   ]),
-  draggingInfo: undefined,
-  setDraggingInfo: (newDraggingInfo) =>
-    set(() => ({ draggingInfo: newDraggingInfo })),
-  setItem: (id, childrenIds) =>
+  draggingItem: undefined,
+  setDraggingItem: (newItem) => set(() => ({ draggingItem: newItem })),
+  setInode: (id, childrenIds) =>
     set((state) => ({
-      view: new Map(state.view).set(id, { id, childrenIds }),
+      inodes: new Map(state.inodes).set(id, { id, childrenIds }),
     })),
 }));
 
-type DraggingInfo = {
-  id: string;
-  parentId?: string;
+const move = ({
+  arr,
+  fromIndex,
+  toIndex,
+}: {
+  arr: string[];
+  fromIndex: number;
+  toIndex: number;
+}): string[] => {
+  const newArr = [...arr];
+  const fromItem = newArr[fromIndex];
+
+  if (fromItem === undefined) {
+    return newArr;
+  }
+
+  newArr.splice(fromIndex, 1);
+  newArr.splice(toIndex, 0, fromItem);
+  return newArr;
 };
 
-function Tree({ id, parentId }: { id: string; parentId?: string }) {
-  const draggingInfo = useTreeViewStore((state) => state.draggingInfo);
-  const setDraggingInfo = useTreeViewStore((state) => state.setDraggingInfo);
-  const nodeView = useTreeViewStore((state) => state.view.get(id));
-  const parentNodeView = useTreeViewStore((state) =>
-    state.view.get(parentId || ''),
+const insert = ({
+  arr,
+  fromItem,
+  toItem,
+}: {
+  arr: string[];
+  fromItem: string;
+  toItem: string;
+}) => {
+  const newArr = [...arr];
+  const to = newArr.findIndex((item) => item === toItem);
+
+  if (to >= 0) {
+    newArr.splice(to + 1, 0, fromItem);
+  }
+
+  return newArr;
+};
+
+const remove = ({ arr, item }: { arr: string[]; item: string }): string[] => {
+  const newArr = [...arr];
+  const idx = newArr.findIndex((__item) => __item === item);
+
+  if (idx >= 0) {
+    newArr.splice(idx, 1);
+  }
+
+  return newArr;
+};
+
+type DndItem = {
+  id: string;
+  index: number;
+  parentInode: Inode;
+};
+
+const parseDndItem = ({
+  id,
+  parentInode,
+}: {
+  id?: string;
+  parentInode?: Inode;
+}): DndItem | undefined => {
+  if (id === undefined || parentInode === undefined) {
+    return;
+  }
+
+  const index = parentInode.childrenIds.findIndex((cid) => cid === id);
+
+  if (index === -1) {
+    return;
+  }
+
+  return {
+    id,
+    index: index,
+    parentInode,
+  };
+};
+
+const isMove = ({ active, over }: { active: DndItem; over: DndItem }) =>
+  !(
+    active.parentInode.id === over.parentInode.id && active.index === over.index
   );
-  const draggingParentNodeView = useTreeViewStore((state) =>
-    state.view.get(draggingInfo?.parentId || ''),
+
+function TreeItem({ id, parentId }: { id: string; parentId?: string }) {
+  const draggingItem = useTreeViewStore((state) => state.draggingItem);
+  const setDraggingItem = useTreeViewStore((state) => state.setDraggingItem);
+  const inode = useTreeViewStore((state) => state.inodes.get(id));
+  const parentInode = useTreeViewStore((state) =>
+    state.inodes.get(parentId || ''),
   );
-  const setItem = useTreeViewStore((state) => state.setItem);
-  const nodeValue = NODE_VALUES.get(id);
-  const treeItemRef = useRef<HTMLDivElement>(null);
+  const draggingParentInode = useTreeViewStore((state) =>
+    state.inodes.get(draggingItem?.parentId || ''),
+  );
+  const setInode = useTreeViewStore((state) => state.setInode);
+  const node = NODE_VALUES.get(id);
+  const nodeRef = useRef<HTMLDivElement>(null);
+  const isRoot = parentId === undefined;
 
   const handleDragStart: DragEventHandler<HTMLDivElement> = () => {
-    setDraggingInfo({
+    setDraggingItem({
       id,
       parentId,
     });
   };
 
-  const handleDragEnter: DragEventHandler<HTMLDivElement> = (e) => {
-    e.preventDefault();
-  };
   const handleDragOver: DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
   };
 
   const handleDrop: DragEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
-    if (!draggingInfo) {
+    if (!draggingItem) {
       return;
     }
 
-    const newParentNodeView = parentNodeView;
-    const oldParentNodeView = draggingParentNodeView;
+    const over = parseDndItem({
+      id,
+      parentInode,
+    });
 
-    if (newParentNodeView === undefined || oldParentNodeView === undefined) {
+    const active = parseDndItem({
+      id: draggingItem.id,
+      parentInode: draggingParentInode,
+    });
+
+    if (
+      over === undefined ||
+      active === undefined ||
+      !isMove({
+        active,
+        over,
+      })
+    ) {
       return;
     }
 
-    const newIdx =
-      (newParentNodeView.childrenIds.findIndex((cid) => cid === id) || 0) + 1;
-    const oldIdx =
-      oldParentNodeView.childrenIds.findIndex(
-        (cid) => cid === draggingInfo.id,
-      ) || 0;
-
-    if (newParentNodeView.id === oldParentNodeView?.id && newIdx === oldIdx) {
-      return;
-    }
-
-    if (newParentNodeView.id === oldParentNodeView.id) {
-      const newChildrenIds = [...newParentNodeView.childrenIds];
-      newChildrenIds.splice(oldIdx, 1);
-      newChildrenIds.splice(newIdx - 1, 0, draggingInfo.id);
-
-      setItem(newParentNodeView.id, newChildrenIds);
+    if (active.parentInode.id === over.parentInode.id) {
+      setInode(
+        active.parentInode.id,
+        move({
+          arr: active.parentInode.childrenIds,
+          fromIndex: active.index,
+          toIndex: over.index + 1,
+        }),
+      );
     } else {
-      if (parentId && parentNodeView) {
-        // parent item에 drop item의 아래에 dragging item를 추가한다.
-        const newChildrenIds = [...parentNodeView.childrenIds];
-        const idx = newChildrenIds.findIndex((cid) => cid === id);
-        newChildrenIds.splice(idx + 1, 0, draggingInfo.id);
+      setInode(
+        over.parentInode.id,
+        insert({
+          arr: over.parentInode.childrenIds,
+          fromItem: active.id,
+          toItem: over.id,
+        }),
+      );
 
-        setItem(parentId, newChildrenIds);
-      }
-
-      if (draggingParentNodeView && draggingInfo.parentId) {
-        // dragging item의 parent item에서 dragging item을 제거한다.
-        const newChildrenIds = [...draggingParentNodeView.childrenIds];
-        const idx = newChildrenIds.findIndex((cid) => cid === draggingInfo.id);
-        newChildrenIds.splice(idx, 1);
-
-        setItem(draggingInfo.parentId, newChildrenIds);
-      }
+      setInode(
+        active.parentInode.id,
+        remove({
+          arr: active.parentInode.childrenIds,
+          item: active.id,
+        }),
+      );
     }
 
-    setDraggingInfo(undefined);
+    setDraggingItem(undefined);
   };
 
-  return nodeValue && nodeView ? (
+  return node === undefined || inode === undefined ? null : (
     <>
       <HStack
         spacing={1.5}
-        ref={parentId === undefined ? undefined : treeItemRef}
-        draggable={parentId !== undefined}
+        ref={isRoot ? undefined : nodeRef}
+        draggable={!isRoot}
         dropShadow="base"
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
-        onDragEnter={handleDragEnter}
         onDrop={handleDrop}
       >
         <Flex alignSelf="flex-start" pt="0.4375rem">
@@ -225,23 +312,23 @@ function Tree({ id, parentId }: { id: string; parentId?: string }) {
             aria-label="Draggalbe"
           />
         </Flex>
-        <Text>{nodeValue.text}</Text>
+        <Text>{node.text}</Text>
       </HStack>
-      {nodeView.childrenIds.length > 0 && (
+      {inode.childrenIds.length > 0 && (
         <Stack pl="6" spacing={3}>
-          {nodeView.childrenIds.map((cid) => (
-            <Tree key={cid} id={cid} parentId={id} />
+          {inode.childrenIds.map((cid) => (
+            <TreeItem key={cid} id={cid} parentId={id} />
           ))}
         </Stack>
       )}
     </>
-  ) : null;
+  );
 }
 
 export default function App() {
   return (
     <Stack spacing={3} p="6">
-      <Tree id="1" />
+      <TreeItem id="1" />
     </Stack>
   );
 }
