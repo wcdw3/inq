@@ -1,7 +1,7 @@
 import { Text, HStack, Stack, IconButton, Flex } from '@chakra-ui/react';
 import { create } from 'zustand';
 import CircleIcon from './features/icon/CircleIcon';
-import { useEffect, useRef, useState } from 'react';
+import { DragEventHandler, useRef } from 'react';
 
 type NodeView = {
   id: string;
@@ -60,6 +60,8 @@ const NODE_VALUES: Map<string, NodeValue> = new Map([
 
 type TreeViewState = {
   view: Map<string, NodeView>;
+  draggingInfo?: DraggingInfo;
+  setDraggingInfo: (newDraggingInfo?: DraggingInfo) => void;
   setItem: (id: string, childrenIds: string[]) => void;
 };
 
@@ -108,7 +110,10 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       },
     ],
   ]),
-  setItem: (id: string, childrenIds: string[]) =>
+  draggingInfo: undefined,
+  setDraggingInfo: (newDraggingInfo) =>
+    set(() => ({ draggingInfo: newDraggingInfo })),
+  setItem: (id, childrenIds) =>
     set((state) => ({
       view: new Map(state.view).set(id, { id, childrenIds }),
     })),
@@ -119,17 +124,9 @@ type DraggingInfo = {
   parentId?: string;
 };
 
-function Tree({
-  id,
-  parentId,
-  draggingInfo,
-  setDraggingInfo,
-}: {
-  id: string;
-  parentId?: string;
-  draggingInfo?: DraggingInfo;
-  setDraggingInfo: (info?: DraggingInfo) => void;
-}) {
+function Tree({ id, parentId }: { id: string; parentId?: string }) {
+  const draggingInfo = useTreeViewStore((state) => state.draggingInfo);
+  const setDraggingInfo = useTreeViewStore((state) => state.setDraggingInfo);
   const nodeView = useTreeViewStore((state) => state.view.get(id));
   const parentNodeView = useTreeViewStore((state) =>
     state.view.get(parentId || ''),
@@ -141,72 +138,85 @@ function Tree({
   const nodeValue = NODE_VALUES.get(id);
   const treeItemRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    treeItemRef.current?.addEventListener('dragstart', () => {
-      console.log('dragstart', {
-        id,
-        parentId,
-      });
-
-      setDraggingInfo({
-        id,
-        parentId,
-      });
+  const handleDragStart: DragEventHandler<HTMLDivElement> = () => {
+    setDraggingInfo({
+      id,
+      parentId,
     });
+  };
 
-    treeItemRef.current?.addEventListener('dragenter', (e) => {
-      e.preventDefault();
-    });
+  const handleDragEnter: DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+  };
+  const handleDragOver: DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+  };
 
-    treeItemRef.current?.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
+  const handleDrop: DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    if (!draggingInfo) {
+      return;
+    }
 
-    treeItemRef.current?.addEventListener('drop', (e) => {
-      e.preventDefault();
-      console.log('drop', {
-        draggingInfo,
-        parentId,
-        parentNodeView,
-        draggingParentNodeView,
-      });
+    const newParentNodeView = parentNodeView;
+    const oldParentNodeView = draggingParentNodeView;
 
-      if (draggingInfo) {
-        if (parentId && parentNodeView) {
-          // parent item에 drop item의 아래에 dragging item를 추가한다.
-          const newChildrenIds = [...parentNodeView.childrenIds];
-          const idx = newChildrenIds.findIndex((cid) => cid === id);
-          newChildrenIds.splice(idx + 1, 0, draggingInfo.id);
+    if (newParentNodeView === undefined || oldParentNodeView === undefined) {
+      return;
+    }
 
-          setItem(parentId, newChildrenIds);
-        }
+    const newIdx =
+      (newParentNodeView.childrenIds.findIndex((cid) => cid === id) || 0) + 1;
+    const oldIdx =
+      oldParentNodeView.childrenIds.findIndex(
+        (cid) => cid === draggingInfo.id,
+      ) || 0;
 
-        // dragging item의 parent item에서 dragging item을 제거한다.
-        if (draggingParentNodeView && draggingInfo.parentId) {
-          const newChildrenIds = [...draggingParentNodeView.childrenIds];
-          const idx = newChildrenIds.findIndex(
-            (cid) => cid === draggingInfo.id,
-          );
-          newChildrenIds.splice(idx, 1);
+    if (newParentNodeView.id === oldParentNodeView?.id && newIdx === oldIdx) {
+      return;
+    }
 
-          setItem(draggingInfo.parentId, newChildrenIds);
-        }
-        setDraggingInfo(undefined);
+    if (newParentNodeView.id === oldParentNodeView.id) {
+      const newChildrenIds = [...newParentNodeView.childrenIds];
+      newChildrenIds.splice(oldIdx, 1);
+      newChildrenIds.splice(newIdx - 1, 0, draggingInfo.id);
+
+      setItem(newParentNodeView.id, newChildrenIds);
+    } else {
+      if (parentId && parentNodeView) {
+        // parent item에 drop item의 아래에 dragging item를 추가한다.
+        const newChildrenIds = [...parentNodeView.childrenIds];
+        const idx = newChildrenIds.findIndex((cid) => cid === id);
+        newChildrenIds.splice(idx + 1, 0, draggingInfo.id);
+
+        setItem(parentId, newChildrenIds);
       }
-    });
-  }, [
-    draggingInfo,
-    draggingParentNodeView,
-    id,
-    parentId,
-    parentNodeView,
-    setDraggingInfo,
-    setItem,
-  ]);
+
+      if (draggingParentNodeView && draggingInfo.parentId) {
+        // dragging item의 parent item에서 dragging item을 제거한다.
+        const newChildrenIds = [...draggingParentNodeView.childrenIds];
+        const idx = newChildrenIds.findIndex((cid) => cid === draggingInfo.id);
+        newChildrenIds.splice(idx, 1);
+
+        setItem(draggingInfo.parentId, newChildrenIds);
+      }
+    }
+
+    setDraggingInfo(undefined);
+  };
 
   return nodeValue && nodeView ? (
     <>
-      <HStack spacing={1.5} ref={treeItemRef} draggable>
+      <HStack
+        spacing={1.5}
+        ref={parentId === undefined ? undefined : treeItemRef}
+        draggable={parentId !== undefined}
+        dropShadow="base"
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDrop={handleDrop}
+      >
         <Flex alignSelf="flex-start" pt="0.4375rem">
           <IconButton
             variant="link"
@@ -220,12 +230,7 @@ function Tree({
       {nodeView.childrenIds.length > 0 && (
         <Stack pl="6" spacing={3}>
           {nodeView.childrenIds.map((cid) => (
-            <Tree
-              key={cid}
-              id={cid}
-              parentId={id}
-              setDraggingInfo={setDraggingInfo}
-            />
+            <Tree key={cid} id={cid} parentId={id} />
           ))}
         </Stack>
       )}
@@ -234,17 +239,9 @@ function Tree({
 }
 
 export default function App() {
-  const [draggingInfo, setDraggingInfo] = useState<DraggingInfo | undefined>(
-    undefined,
-  );
-
   return (
     <Stack spacing={3} p="6">
-      <Tree
-        id="1"
-        draggingInfo={draggingInfo}
-        setDraggingInfo={setDraggingInfo}
-      />
+      <Tree id="1" />
     </Stack>
   );
 }
