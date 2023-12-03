@@ -6,6 +6,7 @@ import { DragEventHandler, useRef } from 'react';
 type Inode = {
   id: string;
   childrenIds: string[];
+  collapse: boolean;
 };
 
 type Node = {
@@ -50,6 +51,13 @@ const NODE_VALUES: Map<string, Node> = new Map([
     },
   ],
   [
+    '1-1-3',
+    {
+      id: '1-1-3',
+      text: '1-1-3',
+    },
+  ],
+  [
     '1-1-1-1',
     {
       id: '1-1-1-1',
@@ -63,12 +71,21 @@ type DndItem = {
   parentId?: string;
 };
 
+type DndActiveItem = {
+  lastChildren: boolean;
+} & DndItem;
+
+type DndOverItem = {
+  collapse: boolean;
+  grandParentId?: string;
+} & DndItem;
+
 type TreeViewState = {
   inodes: Map<string, Inode>;
-  activeItem?: DndItem;
-  setActiveItem: (newItem?: DndItem) => void;
-  overItem?: DndItem;
-  setOverItem: (newItem?: DndItem) => void;
+  activeItem?: DndActiveItem;
+  setActiveItem: (newItem?: DndActiveItem) => void;
+  overItem?: DndOverItem;
+  setOverItem: (newItem?: DndOverItem) => void;
   setInode: (id: string, childrenIds: string[]) => void;
 };
 
@@ -79,13 +96,15 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       {
         id: '1',
         childrenIds: ['1-1', '1-2'],
+        collapse: false,
       },
     ],
     [
       '1-1',
       {
         id: '1-1',
-        childrenIds: ['1-1-1', '1-1-2'],
+        childrenIds: ['1-1-1', '1-1-2', '1-1-3'],
+        collapse: false,
       },
     ],
     [
@@ -93,6 +112,7 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       {
         id: '1-2',
         childrenIds: [],
+        collapse: false,
       },
     ],
     [
@@ -100,6 +120,7 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       {
         id: '1-1-1',
         childrenIds: ['1-1-1-1'],
+        collapse: false,
       },
     ],
     [
@@ -107,6 +128,15 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       {
         id: '1-1-2',
         childrenIds: [],
+        collapse: false,
+      },
+    ],
+    [
+      '1-1-3',
+      {
+        id: '1-1-3',
+        childrenIds: [],
+        collapse: false,
       },
     ],
     [
@@ -114,6 +144,7 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
       {
         id: '1-1-1-1',
         childrenIds: [],
+        collapse: false,
       },
     ],
   ]),
@@ -123,11 +154,14 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
   setOverItem: (newItem) => set(() => ({ overItem: newItem })),
   setInode: (id, childrenIds) =>
     set((state) => ({
-      inodes: new Map(state.inodes).set(id, { id, childrenIds }),
+      inodes: new Map(state.inodes).set(id, {
+        id,
+        childrenIds,
+        collapse: false,
+      }),
     })),
 }));
 
-/*
 const move = ({
   arr,
   fromIndex,
@@ -178,7 +212,93 @@ const remove = ({ arr, item }: { arr: string[]; item: string }): string[] => {
 
   return newArr;
 };
-*/
+
+const INDENT_WIDTH = 24;
+const BASE_PADDING = 24;
+const NODE_HANDLER_WIDTH = 24;
+
+type OffsetOnNode = 'left' | 'handler' | 'right';
+
+const getOffsetOnNode = (toX: number, fromX: number): OffsetOnNode => {
+  if (toX < fromX) {
+    return 'left';
+  }
+
+  if (toX > fromX + NODE_HANDLER_WIDTH) {
+    return 'right';
+  }
+
+  return 'handler';
+};
+
+type PositionInTree = 'first children' | 'next of parent' | 'next';
+
+const getPositionInTree = ({
+  active,
+  over,
+}: {
+  active: { offset: OffsetOnNode; lastChildren: boolean };
+  over: { collapse: boolean };
+}): PositionInTree | undefined => {
+  if (active.offset === 'left' && active.lastChildren) {
+    return 'next of parent';
+  }
+
+  if (active.offset === 'handler') {
+    if (over.collapse) {
+      return 'next';
+    } else {
+      return 'first children';
+    }
+  }
+
+  if (active.offset === 'right') {
+    return 'first children';
+  }
+
+  return undefined;
+};
+
+const getDestNodeByPosition = ({
+  position,
+  inode,
+  parentInode,
+  grandParentInode,
+}: {
+  position: PositionInTree;
+  inode: Inode;
+  parentInode: Inode;
+  grandParentInode?: Inode;
+}): {
+  parentInode: Inode;
+  index: number;
+  id: string;
+} => {
+  if (position === 'first children') {
+    return {
+      parentInode: inode,
+      index: 0,
+      id: inode.childrenIds[0],
+    };
+  }
+
+  if (position === 'next of parent' && grandParentInode) {
+    return {
+      parentInode: grandParentInode,
+      index:
+        grandParentInode.childrenIds.findIndex(
+          (cid) => cid === parentInode.id,
+        ) + 1,
+      id: parentInode.id,
+    };
+  }
+
+  return {
+    parentInode: parentInode,
+    index: parentInode.childrenIds.findIndex((cid) => cid === inode.id) + 1,
+    id: inode.id,
+  };
+};
 
 const getIndexOfDndItem = ({
   id,
@@ -206,10 +326,12 @@ const isMove = ({
 function TreeItem({
   id,
   parentId,
+  grandParentId,
   depth,
 }: {
   id: string;
   parentId?: string;
+  grandParentId?: string;
   depth: number;
 }) {
   const activeItem = useTreeViewStore((state) => state.activeItem);
@@ -220,10 +342,13 @@ function TreeItem({
   const overParentInode = useTreeViewStore((state) =>
     state.inodes.get(overItem?.parentId || ''),
   );
+  const overGrandParentInode = useTreeViewStore((state) =>
+    state.inodes.get(overItem?.grandParentId || ''),
+  );
   const activeParentInode = useTreeViewStore((state) =>
     state.inodes.get(activeItem?.parentId || ''),
   );
-  //const setInode = useTreeViewStore((state) => state.setInode);
+  const setInode = useTreeViewStore((state) => state.setInode);
   const node = NODE_VALUES.get(id);
   const nodeRef = useRef<HTMLDivElement>(null);
   const isRoot = parentId === undefined;
@@ -232,6 +357,11 @@ function TreeItem({
     setActiveItem({
       id,
       parentId,
+      lastChildren: activeParentInode
+        ? activeParentInode.childrenIds[
+            activeParentInode.childrenIds.length - 1
+          ] === id
+        : false,
     });
   };
 
@@ -240,7 +370,50 @@ function TreeItem({
     setOverItem({
       id,
       parentId,
+      grandParentId,
+      collapse: inode?.childrenIds.length === 0,
     });
+  };
+
+  const moveByPosition = (
+    src: {
+      parentInode: Inode;
+      index: number;
+      id: string;
+    },
+    dest: {
+      parentInode: Inode;
+      index: number;
+      id: string;
+    },
+  ) => {
+    if (src.parentInode.id === dest.parentInode.id) {
+      setInode(
+        src.parentInode.id,
+        move({
+          arr: src.parentInode.childrenIds,
+          fromIndex: src.index,
+          toIndex: src.index + 1,
+        }),
+      );
+    } else {
+      setInode(
+        dest.parentInode.id,
+        insert({
+          arr: dest.parentInode.childrenIds,
+          fromItem: src.id,
+          toItem: dest.id,
+        }),
+      );
+
+      setInode(
+        src.parentInode.id,
+        remove({
+          arr: src.parentInode.childrenIds,
+          item: src.id,
+        }),
+      );
+    }
   };
 
   const handleDrop: DragEventHandler<HTMLDivElement> = (e) => {
@@ -262,12 +435,7 @@ function TreeItem({
 
     if (
       activeIndexOnChildren === undefined ||
-      overIndexOnChildren === undefined
-    ) {
-      return;
-    }
-
-    if (
+      overIndexOnChildren === undefined ||
       !isMove({
         activeParentInodeId: activeParentInode?.id || '',
         overParentInodeId: overParentInode?.id || '',
@@ -278,74 +446,53 @@ function TreeItem({
       return;
     }
 
-    // const location: 'left' | 'center' | 'right'  = getLocationOnNode(activeNode, overNode)
-    // const toNode = getToNode(location, overNode)
-    // const position: 'children' | 'next' = getPositionOnNode(location, overNode, toNode)
-    // moveByDrop(position, from: active, to: toNode)
+    const activeX = e.clientX;
+    const overX = depth * INDENT_WIDTH + BASE_PADDING;
+    const activeOffsetOnOver = getOffsetOnNode(activeX, overX);
 
-    /*
-    if (!activeItem) {
-      return;
-    }
-
-    const over = parseDndItem({
-      id,
-      parentInode,
-    });
-
-    const active = parseDndItem({
-      id: activeItem.id,
-      parentInode: activeParentInode,
+    const position = getPositionInTree({
+      active: {
+        offset: activeOffsetOnOver,
+        lastChildren: activeItem.lastChildren,
+      },
+      over: {
+        collapse: overItem.collapse,
+      },
     });
 
     if (
-      over === undefined ||
-      active === undefined ||
-      !isMove({
-        active,
-        over,
-      })
+      position === undefined ||
+      inode === undefined ||
+      overParentInode === undefined ||
+      activeParentInode === undefined
     ) {
       return;
     }
 
-    if (active.parentInode.id === over.parentInode.id) {
-      setInode(
-        active.parentInode.id,
-        move({
-          arr: active.parentInode.childrenIds,
-          fromIndex: active.index,
-          toIndex: over.index + 1,
-        }),
-      );
-    } else {
-      setInode(
-        over.parentInode.id,
-        insert({
-          arr: over.parentInode.childrenIds,
-          fromItem: active.id,
-          toItem: over.id,
-        }),
-      );
+    const destNode = getDestNodeByPosition({
+      position,
+      inode,
+      parentInode: overParentInode,
+      grandParentInode: overGrandParentInode,
+    });
 
-      setInode(
-        active.parentInode.id,
-        remove({
-          arr: active.parentInode.childrenIds,
-          item: active.id,
-        }),
-      );
-    }
+    moveByPosition(
+      {
+        parentInode: activeParentInode,
+        index: activeIndexOnChildren,
+        id: activeItem.id,
+      },
+      destNode,
+    );
 
     setActiveItem(undefined);
-    */
   };
 
   return node === undefined || inode === undefined ? null : (
     <>
       <HStack
         spacing={1.5}
-        pl={depth * 6}
+        pl={`${depth * INDENT_WIDTH}px`}
         pb={3}
         ref={isRoot ? undefined : nodeRef}
         draggable={!isRoot}
@@ -353,6 +500,7 @@ function TreeItem({
         onDragStart={handleDragStart}
         onDragEnter={handleDragEnter}
         onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
       >
         <Flex alignSelf="flex-start" pt="0.4375rem">
           <IconButton
@@ -374,7 +522,7 @@ function TreeItem({
 
 export default function App() {
   return (
-    <Stack spacing={0} p={6}>
+    <Stack spacing={0} p={`${BASE_PADDING}px`}>
       <TreeItem id="1" depth={0} />
     </Stack>
   );
