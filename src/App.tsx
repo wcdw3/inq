@@ -80,6 +80,11 @@ type DndOverItem = {
   grandParentId?: string;
 } & DndItem;
 
+type Indicator = {
+  nodeId: string;
+  relativeDepth: number;
+};
+
 type TreeViewState = {
   inodes: Map<string, Inode>;
   activeItem?: DndActiveItem;
@@ -87,6 +92,8 @@ type TreeViewState = {
   overItem?: DndOverItem;
   setOverItem: (newItem?: DndOverItem) => void;
   setInode: (id: string, childrenIds: string[]) => void;
+  indicator?: Indicator;
+  setIndicator: (newIndicator?: Indicator) => void;
 };
 
 const useTreeViewStore = create<TreeViewState>((set) => ({
@@ -149,9 +156,9 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
     ],
   ]),
   activeItem: undefined,
-  setActiveItem: (newItem) => set(() => ({ activeItem: newItem })),
+  setActiveItem: (newItem) => set({ activeItem: newItem }),
   overItem: undefined,
-  setOverItem: (newItem) => set(() => ({ overItem: newItem })),
+  setOverItem: (newItem) => set({ overItem: newItem }),
   setInode: (id, childrenIds) =>
     set((state) => ({
       inodes: new Map(state.inodes).set(id, {
@@ -160,6 +167,8 @@ const useTreeViewStore = create<TreeViewState>((set) => ({
         collapse: false,
       }),
     })),
+  indicator: undefined,
+  setIndicator: (newIndicator) => set({ indicator: newIndicator }),
 }));
 
 const move = ({
@@ -185,20 +194,20 @@ const move = ({
 
 const insert = ({
   arr,
-  fromItem,
-  toItem,
+  index,
+  item,
 }: {
   arr: string[];
-  fromItem: string;
-  toItem: string;
+  index: number;
+  item: string;
 }) => {
   const newArr = [...arr];
-  const to = newArr.findIndex((item) => item === toItem);
 
-  if (to >= 0) {
-    newArr.splice(to + 1, 0, fromItem);
+  if (index >= 0) {
+    newArr.splice(index + 1, 0, item);
   }
 
+  console.log({ newArr, arr, index, item });
   return newArr;
 };
 
@@ -272,13 +281,11 @@ const getDestNodeByPosition = ({
 }): {
   parentInode: Inode;
   index: number;
-  id: string;
 } => {
   if (position === 'first children') {
     return {
       parentInode: inode,
       index: 0,
-      id: inode.childrenIds[0],
     };
   }
 
@@ -289,14 +296,12 @@ const getDestNodeByPosition = ({
         grandParentInode.childrenIds.findIndex(
           (cid) => cid === parentInode.id,
         ) + 1,
-      id: parentInode.id,
     };
   }
 
   return {
     parentInode: parentInode,
     index: parentInode.childrenIds.findIndex((cid) => cid === inode.id) + 1,
-    id: inode.id,
   };
 };
 
@@ -349,6 +354,8 @@ function TreeItem({
     state.inodes.get(activeItem?.parentId || ''),
   );
   const setInode = useTreeViewStore((state) => state.setInode);
+  const indicator = useTreeViewStore((state) => state.indicator);
+  const setIndicator = useTreeViewStore((state) => state.setIndicator);
   const node = NODE_VALUES.get(id);
   const nodeRef = useRef<HTMLDivElement>(null);
   const isRoot = parentId === undefined;
@@ -384,7 +391,6 @@ function TreeItem({
     dest: {
       parentInode: Inode;
       index: number;
-      id: string;
     },
   ) => {
     if (src.parentInode.id === dest.parentInode.id) {
@@ -401,8 +407,8 @@ function TreeItem({
         dest.parentInode.id,
         insert({
           arr: dest.parentInode.childrenIds,
-          fromItem: src.id,
-          toItem: dest.id,
+          index: dest.index,
+          item: src.id,
         }),
       );
 
@@ -486,7 +492,18 @@ function TreeItem({
     );
 
     setActiveItem(undefined);
+    setIndicator(undefined);
   };
+
+  const handleDragOver: DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    setIndicator({
+      nodeId: id,
+      relativeDepth: 0,
+    });
+  };
+
+  const showIndicator = indicator?.nodeId === id;
 
   return node === undefined || inode === undefined ? null : (
     <>
@@ -500,7 +517,7 @@ function TreeItem({
         onDragStart={handleDragStart}
         onDragEnter={handleDragEnter}
         onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={handleDragOver}
       >
         <Flex alignSelf="flex-start" pt="0.4375rem">
           <IconButton
@@ -512,6 +529,7 @@ function TreeItem({
         </Flex>
         <Text>{node.text}</Text>
       </HStack>
+      {showIndicator && <div>indicator</div>}
       {inode.childrenIds.length > 0 &&
         inode.childrenIds.map((cid) => (
           <TreeItem key={cid} id={cid} parentId={id} depth={depth + 1} />
